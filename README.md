@@ -157,3 +157,143 @@ Run the tests with:
 ```bash
 python -m pytest tests/
 ```
+
+## Modelling and evaluation
+
+The complete workflow is in
+[`notebooks/data0_modelling_pipeline.ipynb`](notebooks/data0_modelling_pipeline.ipynb):
+data loading, training-set EDA, feature engineering, grouped cross-validation,
+model comparison, hyperparameter tuning, threshold selection and evaluation.
+
+### Run the notebook
+
+1. Install `requirements.txt` into the project's `.venv`. On macOS, XGBoost also
+   requires the OpenMP runtime: `brew install libomp`.
+2. Place the full data0 files in the layout above. The notebook reads
+   `data/processed/data0_reads.parquet`, or generates it from the raw files if
+   it does not exist.
+3. Open the notebook, select the `.venv` kernel, and choose **Run All**. It can
+   run from the repository root or `notebooks/` and takes several minutes.
+
+### Data and evaluation design
+
+This experiment uses **data0 only**. Each sample is one
+`(transcript_id, transcript_position)` site, aggregated over all its reads;
+the target is the site's binary `label`. data1 is kept separate because of
+overlapping sites, and data2 because of its fractional annotations.
+
+The outer split shuffles genes with `seed=42` and allocates approximately
+70% / 15% / 15% of genes to train, validation and test. All transcripts, sites
+and reads from a gene remain in the same partition.
+
+| Partition | Genes | Sites | Positive sites |
+|---|---:|---:|---:|
+| Train | 2,696 | 85,100 | 3,763 |
+| Validation | 578 | 18,352 | 935 |
+| Test | 578 | 18,386 | 777 |
+
+The shared `X_train`, `X_val` and `X_test` tables contain 162 columns: the
+153 existing engineered features plus nine arithmetic means of the raw
+signals. Each model pipeline selects its own subset: nine raw means for the
+mean-only baseline, 47 sequence/motif features for the sequence-only model,
+or 153 engineered features for the full models. `y_train`, `y_val` and
+`y_test` contain aligned labels. Identifiers remain in the index or metadata,
+not in predictor columns. Optional k-mer residuals are disabled.
+
+All candidates use the same **five-fold `GroupKFold` by `gene_id`, within
+the training partition only**. Scaling and class weights are fitted within
+each fold's training portion. The report includes ROC-AUC, trapezoidal PR-AUC
+and average precision (AP), each as **mean ± sample standard deviation
+(`ddof=1`) across folds**. AP and trapezoidal PR-AUC are reported separately.
+
+Model selection maximises mean CV AP, with ROC-AUC and then experiment ID
+as tie-breakers. The selected configuration is fitted on all training data;
+validation selects the threshold that maximises F1. The model is not refitted
+on train + validation afterward. Test results do not determine model choice,
+hyperparameters or the threshold in this workflow.
+
+### Models, imbalance handling and tuning
+
+The default experiment plan contains **21 configurations across four model
+families**, giving **105 CV fits**:
+
+| Model family | Configurations | Comparisons |
+|---|---:|---|
+| DummyClassifier | 1 | Constant training-prior reference |
+| Logistic Regression | 2 | Sequence-only versus full engineered features |
+| HistGradientBoosting | 10 | Raw means versus full features, class weighting, six search candidates |
+| XGBoost | 8 | Positive-class weighting and six search candidates |
+
+E01 is the required **unweighted gradient-boosted tree baseline on nine raw
+mean features**. Paired experiments compare unweighted and balanced HGB,
+and XGBoost with `scale_pos_weight=1` versus the fold-training
+negative/positive ratio. The XGBoost search also considers the square root
+of that ratio. Weights are calculated without assessment-fold labels.
+
+Reproducible random searches vary learning rate, boosting iterations,
+tree complexity, regularisation and weighting; XGBoost additionally varies
+row and column sampling. Six configurations per boosting family are sampled
+before inspecting scores. This is a bounded search, not an exhaustive one.
+
+### Final recommendation and results
+
+The completed run `20261004T183731_5bbdbfb1` selected **H04:
+HistGradientBoosting with all 153 engineered features and no class weights**.
+Its settings are `learning_rate=0.03`, `max_iter=350`, `max_leaf_nodes=31`,
+`min_samples_leaf=20`, `l2_regularization=2.0`, `early_stopping=False` and
+`random_state=42`.
+
+| Metric | Training CV: mean ± sd | Historical test |
+|---|---:|---:|
+| ROC-AUC | 0.9183 ± 0.0104 | 0.9279 |
+| PR-AUC (trapezoidal) | 0.4825 ± 0.0320 | 0.4967 |
+| Average precision | 0.4834 ± 0.0317 | 0.4973 |
+
+The validation-selected threshold is **0.186744**. On the test partition,
+precision is **0.4721**, recall **0.5997**, and F1 **0.5283**: 466 true
+positives, 521 false positives, 311 false negatives and 17,088 true negatives.
+The notebook includes PR/ROC curves, a confusion matrix and 95% percentile
+intervals from 500 bootstrap samples of whole test genes.
+
+Mean CV AP improves from **0.3991** for the raw-mean baseline to **0.4834**
+for H04. The best XGBoost configuration, X05, is close at **0.4815**;
+the scores do not establish a clear superiority of HGB over XGBoost.
+
+CV scores were used for tuning and selection, so they are not unbiased
+nested-CV estimates. The test partition was inspected in earlier work and
+is therefore reported as a **historical internal evaluation**, not a newly
+untouched test set. Gene-bootstrap intervals do not capture training or
+selection uncertainty. External validation and the separate m6Anet benchmark
+remain necessary for broader performance claims.
+
+### Experiment logs and saved outputs
+
+With `SAVE_OUTPUTS=True` (the default), each run writes to a new directory:
+
+```text
+data/processed/modelling/data0_gene_split_seed42/person_c_runs/<run_id>/
+```
+
+Key outputs include:
+
+- `experiment_plan.csv`, `experiment_log.csv`, and `fold_results.csv`:
+  experiment IDs, changes from parent experiments, parameters, realised
+  fold-training weights, timestamps, fold scores and aggregate metrics.
+- `cv_fold_manifest.parquet`, `cv_leaderboard.csv`, `cv_mean_sd_report.csv`,
+  and `paired_experiment_changes.csv`: fold membership and model comparisons.
+- `oof_<experiment_id>.parquet`: out-of-fold predictions for each candidate.
+- `X_*.parquet`, `y_*.parquet`, and `metadata_*.parquet`: prepared inputs,
+  labels and site metadata with aligned indices.
+- `selected_model.joblib` and `recommendation.json`: the fitted pipeline,
+  feature schema, threshold, selected configuration and recommendation.
+- `validation_*.csv`, `test_*.csv`, and `test_predictions.parquet`:
+  evaluation metrics, threshold results, bootstrap intervals and predictions.
+- `cv_started.json` and `cv_complete.json`: run provenance, package versions,
+  input/code checksums and CV completion details.
+
+A cumulative `person_c_experiment_history.csv` in the parent
+`data0_gene_split_seed42/` directory preserves completed experiments across
+runs. These generated files are under the Git-ignored `data/` directory;
+saved notebook outputs provide the results overview in the repository.
+The tests in `tests/test_modelling_notebook.py` check metric calculations,
+gene separation, fold-local scaling and weighting, and append-only logging.
