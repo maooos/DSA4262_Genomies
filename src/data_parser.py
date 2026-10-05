@@ -1,4 +1,5 @@
 import gzip
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -23,6 +24,15 @@ FEATURE_NAMES = [
 ]
 
 SITE_KEYS = ["transcript_id", "transcript_position"]
+
+
+def file_sha256(path):
+    """Identify exact inputs and outputs for resumable data preparation."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def load_labels(label_path):
@@ -334,8 +344,11 @@ def parse_to_parquet(
 
     audit = {
         "signal_path": str(signal_path),
+        "signal_sha256": file_sha256(signal_path),
         "label_path": str(label_path) if label_path is not None else None,
+        "label_sha256": file_sha256(label_path) if label_path is not None else None,
         "output_path": str(output_path),
+        "output_sha256": file_sha256(output_path),
         "max_sites_requested": max_sites,
         "parsed_sites": site_count,
         "parsed_read_rows": read_count,

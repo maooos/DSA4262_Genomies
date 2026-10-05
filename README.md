@@ -4,6 +4,8 @@
 
 - `src/data_parser.py`: converts signal JSON files into per-read Parquet tables.
 - `scripts/parse_data.py`: command-line interface for parsing.
+- `scripts/prepare_datasets.py`: complete raw -> parsed -> gene-annotated dataset workflow.
+- `scripts/annotate_gene_ids.py`: attach recovered annotations to all rows of a parsed Parquet.
 - `scripts/inspect_data.py`: inspects the first signal site and its label in data0.
 - `notebooks/EDA_Findings.ipynb`: consolidated findings and next steps.
 - `notebooks/inference.ipynb`: generate per-site scores with a saved model; defaults to H04 and its internal test split.
@@ -64,23 +66,178 @@ data/
 
 ## Generate the Parquet files
 
+### Complete preparation workflow (recommended)
+
+Run from the repository root, with the virtual environment activated:
+
+```bash
+python -m scripts.prepare_datasets --download
+```
+
+`--download` allows missing public reference files to be downloaded. With the
+references/mappings already cached, `python -m scripts.prepare_datasets` works
+offline. The workflow performs these stages in order:
+
+1. Invoke `scripts.parse_data` for data0, data1 and data2 using their original
+   raw JSON and metadata files. Write complete per-read Parquets to `parsed/`.
+2. Validate the cached recovery mappings against the raw-file and mapping
+   checksums, or run `scripts.recover_gene_ids` to create them.
+3. Join the recovered annotations by `(transcript_id, transcript_position)`
+   onto **every read**, writing the complete final datasets to `annotated/`.
+
+```text
+data/raw/dataN/datasetN.json.gz + data.info[.labelled]
+    -> scripts.parse_data
+data/processed/parsed/dataN_reads.parquet
+    -> scripts.annotate_gene_ids + gene_id_recovery/*.csv
+data/processed/annotated/dataN_reads.parquet   # Final dataset to load
+```
+
+| Final dataset | Read rows | Sites | Gene annotation |
+|---|---:|---:|---|
+| `data/processed/annotated/data0_reads.parquet` | 11,027,106 | 121,838 | Existing gene IDs verified and retained |
+| `data/processed/annotated/data1_reads.parquet` | 7,907,952 | 90,810 | All missing gene IDs filled |
+| `data/processed/annotated/data2_reads.parquet` | 1,171,940 | 1,323 | Synthetic reference IDs, positions and evidence status added |
+
+These final files contain all nine signal features, sequences, coverage, read
+indices and labels from the parsed datasets, plus the annotations. They are
+full datasets, not mapping-only tables. Each has an adjacent `.audit.json`
+recording source/output checksums and validation counts. The annotation stage
+verifies every site's read count and compares all original non-gene columns
+against the written Parquet, including row order. It rejects conflicting gene
+IDs, missing mappings, duplicate mappings and inconsistent metadata.
+
+data2 retains null `gene_id` with
+`gene_id_status="not_applicable_synthetic_construct"`. Its `geo_reference_id`
+and `reference_mapping_status` columns carry the recovered synthetic source
+and its evidence strength, as explained below. These are not human gene IDs.
+
+Successful stages are reused only when their checksums still match. To rebuild
+after input changes, choose a new destination, for example
+`--processed-dir data/processed/rebuild_1`. Raw files and earlier datasets are
+preserved. The older `data/processed/dataN_reads.parquet` files are legacy
+parsed outputs; load the files in **`annotated/`** for complete annotations.
+If an existing notebook uses the legacy path, point its data-loading setting
+to the corresponding final file.
+
+```python
+import pandas as pd
+from src.feature_engineering import build_features
+
+reads = pd.read_parquet("data/processed/annotated/data1_reads.parquet")
+X = build_features(reads)  # Existing site-level feature engineering
+```
+
+The two stages can also be run separately (example for data1):
+
+```bash
+python -m scripts.parse_data \
+  --signals data/raw/data1/dataset1.json.gz \
+  --labels data/raw/data1/data.info \
+  --output data/processed/parsed/data1_reads.parquet
+
+# If recovery mappings have not been generated yet:
+python -m scripts.recover_gene_ids --download
+
+python -m scripts.annotate_gene_ids \
+  --dataset data1 \
+  --input data/processed/parsed/data1_reads.parquet \
+  --mapping data/processed/gene_id_recovery/data1.gene_ids.csv \
+  --output data/processed/annotated/data1_reads.parquet
+```
+
+The individual stage commands refuse existing output files; use
+`scripts.prepare_datasets` to resume an existing preparation safely.
+
+### Recover missing gene IDs
+
+`scripts/recover_gene_ids.py` recovers **all 90,810 data1 sites** (4,451
+transcripts, 3,149 gene IDs) using the full Ensembl release 91 annotation,
+including patches and alternate haplotypes. The required file is
+`Homo_sapiens.GRCh38.91.chr_patch_hapl_scaff.gtf.gz`; the smaller default GTF
+omits 145 data1 transcripts. This reference also reproduces every original
+data0 gene ID, with zero conflicts across 121,838 sites. Each site's seven-base
+sequence matches the release 91 transcript FASTA at its supplied position in
+both datasets, and the FASTA gene headers agree with the GTF.
+
+The [SG-NEx annotation documentation](https://github.com/GoekeLab/sg-nex-data/blob/master/docs/ANNOTATIONS.md)
+identifies release 91. The script downloads the complete annotation and the
+coding/noncoding transcript FASTAs from the official Ensembl archive and checks
+their SHA-256 checksums before use.
+
+```bash
+python -m scripts.recover_gene_ids --download
+# Subsequent runs use the cached references:
+python -m scripts.recover_gene_ids
+```
+
+Outputs are under `data/processed/gene_id_recovery/`:
+
+- `data1.gene_ids.csv`: all original data1 metadata plus `gene_id`, `gene_name`,
+  sequence verification and reference provenance. This can be passed as
+  `--labels` to `scripts.parse_data` when generating a **new** annotated Parquet.
+- `data0.gene_ids.csv`: original data0 labels with their reference cross-checks.
+- `human_transcript_to_gene.csv`: mapping for the union of data0/data1 transcripts.
+- `data2.reference_mapping.csv`: synthetic reference assignments, with blank
+  `gene_id` and an explicit `not_applicable_synthetic_construct` status.
+- `data2.reference_candidates.csv`: every seven-base match in the Curlcake
+  reference, retaining ambiguities instead of silently discarding alternatives.
+- `data2.mixture_signal_evidence.csv`: exact endpoint-signal matching counts.
+- `all_sites.gene_ids.csv`: all 213,971 sites with dataset and mapping status.
+- `recovery.audit.json`: counts, checksums, source URLs and interpretation limits.
+
+The script writes derived outputs; it does not replace raw data, existing read
+Parquets or trained models. Rerunning replaces its own generated CSV/audit files.
+
+**data2 is strongly supported as a synthetic Curlcake mixture dataset.** Its
+189 ordered sequence contexts form a unique ordered subsequence of 192 DRACH
+sites in the four [GEO GSE124309 Curlcake reference sequences](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE124309).
+The [original Curlcake study](https://www.nature.com/articles/s41467-019-11713-9)
+describes computationally designed sequences covering all possible five-base
+contexts; these have reference names rather than human Ensembl gene IDs.
+All seven `tx_id_*` groups
+share the same contexts. Exact comparison of position, sequence and all nine
+numeric signal features assigns every one of the 1,171,940 read rows to the
+`tx_id_0` or `tx_id_6` endpoints; the intermediate groups have approximately
+95%, 75%, 70%, 50% and 25% reads from `tx_id_0`, matching their labels.
+A [public copy of dataset2](https://github.com/bce99/m6A-RNA-Modification-Prediction/blob/main/dataset2.json.gz)
+also has the same decompressed SHA-256 as our file.
+
+The four inferred source constructs contribute 36, 47, 49 and 57 sites per
+mixture, respectively: `cc6m_2244_t7_ecorv`, `cc6m_2459_t7_ecorv`,
+`cc6m_2595_t7_ecorv` and `cc6m_2709_t7_ecorv`. Of the 189 contexts, 97 have a
+unique seven-base match **within the Curlcake reference**. The remaining 92
+assignments require the explicit assumption that anonymization preserved the
+order of sites across the four references. The script checks that the complete
+ordered alignment is unique, but this is still inference: the original renaming
+key and dataset-generation code are unavailable.
+
+Both the GEO and [EpiNano reference FASTAs](https://github.com/novoalab/EpiNano/blob/master/Reference_sequences/cc.fasta)
+are retained. Their complete construct cores agree, but EpiNano includes a
+31-base prefix and a three-base suffix. Output coordinates are explicitly
+zero-based central-base positions in each named FASTA; they are not claimed to
+be the unknown preprocessing pipeline's original coordinates. A synthetic
+construct identifier must not be substituted for a biological `gene_id`.
+
+### Parse signal data
+
 Run these commands from the repository root:
 
 ```bash
 python -m scripts.parse_data \
   --signals data/raw/data0/dataset0.json.gz \
   --labels data/raw/data0/data.info.labelled \
-  --output data/processed/data0_reads.parquet
+  --output data/processed/parsed/data0_reads.parquet
 
 python -m scripts.parse_data \
   --signals data/raw/data1/dataset1.json.gz \
   --labels data/raw/data1/data.info \
-  --output data/processed/data1_reads.parquet
+  --output data/processed/parsed/data1_reads.parquet
 
 python -m scripts.parse_data \
   --signals data/raw/data2/dataset2.json.gz \
   --labels data/raw/data2/data.info \
-  --output data/processed/data2_reads.parquet
+  --output data/processed/parsed/data2_reads.parquet
 ```
 
 Each command creates a Parquet table and a corresponding `dataN_reads.audit.json` file containing parsing counts and label-matching information. The output directory is created automatically.
@@ -108,7 +265,7 @@ transcript_position)` site.
 import pandas as pd
 from src.feature_engineering import build_features, FEATURE_COLUMNS
 
-df = pd.read_parquet("data/processed/data0_reads.parquet")
+df = pd.read_parquet("data/processed/annotated/data0_reads.parquet")
 X = build_features(df)          # one row per site, no label/gene_id
 X[FEATURE_COLUMNS]              # feature matrix only, keys dropped
 ```
