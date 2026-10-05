@@ -27,19 +27,54 @@ pip install -r requirements.txt
 
 Select `.venv` as the Python environment when opening notebooks in VS Code.
 
+## Start here: raw data to modelling
+
+From the repository root, after placing all six raw files in the layout below:
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m scripts.prepare_datasets --download
+```
+
+The preparation command runs parsing and annotation for data0, data1 and data2.
+It also downloads the public references when needed; it does not download the
+teacher-provided raw inputs. Complete datasets are written to
+`data/processed/annotated/`. Rerunning verifies and reuses completed stages.
+
+Then open `notebooks/data0_modelling_pipeline.ipynb`, select the `.venv` kernel,
+and choose **Restart Kernel and Run All**. It reads the annotated data0 Parquet,
+builds the site features, splits by gene, trains and compares models, and saves
+the selected model and evaluation results. Keep `SAVE_OUTPUTS=True`. The default
+plan runs 21 configurations with five CV folds each; wait for the final cell to
+finish. Copy the printed output directory for the next step.
+
+To score data1 or data2, open `notebooks/inference.ipynb`. In its Settings cell,
+set `RUN_DIR` to that completed training run's directory and set `DATASET` to
+`"data1"` or `"data2"`, then **Restart Kernel and Run All**. These choices read
+the corresponding annotated Parquet. Predictions are saved under
+`data/processed/inference/`. The default historical H04 model is not included
+in Git, so a fresh checkout must select a locally trained model.
+
+Training currently uses data0 only. data1 and data2 remain separate prediction
+datasets; completing annotations does not merge them into the training set.
+
 ## Generate prediction scores
 
 Open `notebooks/inference.ipynb`, edit its **Settings** cell, and choose **Restart
-Kernel and Run All**. `MODEL_PATH` selects a `selected_model.joblib` saved by
-`data0_modelling_pipeline.ipynb`. `DATASET` selects `internal_test`, `data1`,
+Kernel and Run All**. `RUN_DIR` selects a completed modelling run; `MODEL_PATH`
+selects its `selected_model.joblib` saved by `data0_modelling_pipeline.ipynb`.
+`DATASET` selects `internal_test`, `data1`,
 `data2`, or `custom`. Custom inputs can be raw project JSON/JSONL (including
 gzip), parsed read Parquet, or compatible site-feature CSV/Parquet tables.
 The separate `newadjustmentfolder` model bundles use different preprocessing
 and are not compatible with this notebook's loader.
 
-The notebook defaults to H04 from run `20261005T103445_98fad904` and generates
-scores for its 18,386 internal test sites. It also verifies those scores against
-the saved historical predictions. It loads the fitted model without retraining.
+The notebook defaults to H04 from run `20261005T103445_98fad904`, if that local
+run is available, and generates scores for its 18,386 internal test sites. It
+also verifies those scores against the saved historical predictions. For a new
+training run, set `RUN_DIR` to your own output directory. It loads the fitted
+model without retraining.
 
 Each run writes a new CSV under `data/processed/inference/` with columns
 `transcript_id,transcript_position,score`, plus a `.metadata.json` file recording
@@ -99,16 +134,33 @@ data/processed/annotated/dataN_reads.parquet   # Final dataset to load
 | `data/processed/annotated/data1_reads.parquet` | 7,907,952 | 90,810 | All missing gene IDs filled |
 | `data/processed/annotated/data2_reads.parquet` | 1,171,940 | 1,323 | Synthetic reference IDs, positions and evidence status added |
 
-These final files contain all nine signal features, sequences, coverage, read
-indices and labels from the parsed datasets, plus the annotations. They are
+These final files contain all nine signal features, sequences, coverage and read
+indices from the parsed datasets, plus the annotations. data0/data1 labels are
+unchanged. For data2, the final `label` is an integer: **0 if the original label
+is 0, and 1 if the original label is greater than 0**. The original mixture
+proportion is preserved in `label_original`; raw, parsed and recovery mapping
+files keep their original labels. This binary target means a positive mixture
+proportion at the site, not that every read is modified. These are
 full datasets, not mapping-only tables. Each has an adjacent `.audit.json`
 recording source/output checksums and validation counts. The annotation stage
 verifies every site's read count and compares all original non-gene columns
-against the written Parquet, including row order. It rejects conflicting gene
+against the written Parquet, including row order (using `label_original` for
+data2). It also verifies the binary conversion and records `label_transformation`
+and `original_label_column` in the audit. It rejects conflicting gene
 IDs, missing mappings, duplicate mappings and inconsistent metadata.
 
-data2 retains null `gene_id` with
-`gene_id_status="not_applicable_synthetic_construct"`. Its `geo_reference_id`
+The final data2 Parquet uses `gene_id="Synthetic Curlcake RNA: {geo_reference_id}"`
+as a readable reference-specific description, for example
+`Synthetic Curlcake RNA: cc6m_2244_t7_ecorv`, with
+`gene_id_status="not_applicable_synthetic_construct"`.
+There are four distinct descriptions, one for each mapped synthetic construct;
+these are not biological gene IDs. Each of the seven `tx_id_*` mixture groups
+contains sites from all four constructs, so a transcript ID does not determine
+one unique construct. Assignments retain their evidence strength in
+`reference_mapping_status`, including order-dependent inferences.
+The audit records `genes=0` and `gene_id_unique_values=4`.
+Raw, parsed and recovery mapping files retain their original null gene IDs.
+Its `geo_reference_id`
 and `reference_mapping_status` columns carry the recovered synthetic source
 and its evidence strength, as explained below. These are not human gene IDs.
 
@@ -117,8 +169,9 @@ after input changes, choose a new destination, for example
 `--processed-dir data/processed/rebuild_1`. Raw files and earlier datasets are
 preserved. The older `data/processed/dataN_reads.parquet` files are legacy
 parsed outputs; load the files in **`annotated/`** for complete annotations.
-If an existing notebook uses the legacy path, point its data-loading setting
-to the corresponding final file.
+The modelling notebook and the inference notebook's data1/data2 choices use
+these annotated files by default. Older EDA notebooks may still use the legacy
+path; point their data-loading setting to the corresponding final file.
 
 ```python
 import pandas as pd
@@ -217,7 +270,8 @@ are retained. Their complete construct cores agree, but EpiNano includes a
 31-base prefix and a three-base suffix. Output coordinates are explicitly
 zero-based central-base positions in each named FASTA; they are not claimed to
 be the unknown preprocessing pipeline's original coordinates. A synthetic
-construct identifier must not be substituted for a biological `gene_id`.
+construct identifier or display description does not establish a biological
+gene identity.
 
 ### Parse signal data
 
@@ -345,9 +399,10 @@ model comparison, hyperparameter tuning, threshold selection and evaluation.
 
 1. Install `requirements.txt` into the project's `.venv`. On macOS, XGBoost also
    requires the OpenMP runtime: `brew install libomp`.
-2. Place the full data0 files in the layout above. The notebook reads
-   `data/processed/data0_reads.parquet`, or generates it from the raw files if
-   it does not exist.
+2. Place all raw datasets in the layout above and run
+   `python -m scripts.prepare_datasets --download` from the repository root.
+   The notebook reads `data/processed/annotated/data0_reads.parquet`; it reports
+   the preparation command if this file is missing.
 3. Open the notebook, select the `.venv` kernel, and choose **Run All**. It can
    run from the repository root or `notebooks/` and takes several minutes.
 
@@ -356,7 +411,9 @@ model comparison, hyperparameter tuning, threshold selection and evaluation.
 This experiment uses **data0 only**. Each sample is one
 `(transcript_id, transcript_position)` site, aggregated over all its reads;
 the target is the site's binary `label`. data1 is kept separate because of
-overlapping sites, and data2 because of its fractional annotations.
+overlapping sites, and data2 because it represents synthetic mixtures. The final
+data2 labels are binary under the rule above; their original mixture proportions
+remain in `label_original`.
 
 The outer split shuffles genes with `seed=42` and allocates approximately
 70% / 15% / 15% of genes to train, validation and test. All transcripts, sites

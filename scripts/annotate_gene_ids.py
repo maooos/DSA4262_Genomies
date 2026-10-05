@@ -1,4 +1,4 @@
-"""Step 2 after parse_data: attach gene IDs to a complete per-read dataset."""
+"""Attach gene annotations; binarize data2 labels while retaining label_original."""
 
 import argparse
 import json

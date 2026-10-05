@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from src.data_parser import file_sha256
-from src.gene_annotation import annotate_parquet
+from src.gene_annotation import DATA2_GENE_ID_FORMAT, DATA2_LABEL_TRANSFORMATION, annotate_parquet
 
 
 MAPPING_FILES = {"data0": "data0.gene_ids.csv", "data1": "data1.gene_ids.csv",
@@ -92,6 +92,10 @@ def main(argv=None):
                         "output_sha256": file_sha256(output)}
             if any(result.get(k) != v for k, v in expected.items()):
                 raise ValueError(f"Stale annotation output: {output}; choose a new --processed-dir")
+            if dataset == "data2" and result.get("label_transformation") != DATA2_LABEL_TRANSFORMATION:
+                raise ValueError(f"Stale data2 labels in {output}; choose a new --processed-dir to generate binary labels")
+            if dataset == "data2" and result.get("synthetic_gene_id_format") != DATA2_GENE_ID_FORMAT:
+                raise ValueError(f"Stale data2 gene_id description in {output}; choose a new --processed-dir")
         else:
             print(f"[annotate] {dataset}: merging annotations into all read rows", flush=True)
             result = annotate_parquet(parsed, mapping, output, dataset=dataset)
