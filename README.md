@@ -6,6 +6,7 @@
 - `scripts/parse_data.py`: command-line interface for parsing.
 - `scripts/inspect_data.py`: inspects the first signal site and its label in data0.
 - `notebooks/EDA_Findings.ipynb`: consolidated findings and next steps.
+- `notebooks/inference.ipynb`: generate per-site scores with a saved model; defaults to H04 and its internal test split.
 - `notebooks/indiv_data_eda/`: detailed EDA code and saved outputs for each dataset.
 - `handout_project2_RNAModifications.html`: project requirements.
 
@@ -23,6 +24,24 @@ pip install -r requirements.txt
 ```
 
 Select `.venv` as the Python environment when opening notebooks in VS Code.
+
+## Generate prediction scores
+
+Open `notebooks/inference.ipynb`, edit its **Settings** cell, and choose **Restart
+Kernel and Run All**. `MODEL_PATH` selects a `selected_model.joblib` saved by
+`data0_modelling_pipeline.ipynb`. `DATASET` selects `internal_test`, `data1`,
+`data2`, or `custom`. Custom inputs can be raw project JSON/JSONL (including
+gzip), parsed read Parquet, or compatible site-feature CSV/Parquet tables.
+The separate `newadjustmentfolder` model bundles use different preprocessing
+and are not compatible with this notebook's loader.
+
+The notebook defaults to H04 from run `20261005T103445_98fad904` and generates
+scores for its 18,386 internal test sites. It also verifies those scores against
+the saved historical predictions. It loads the fitted model without retraining.
+
+Each run writes a new CSV under `data/processed/inference/` with columns
+`transcript_id,transcript_position,score`, plus a `.metadata.json` file recording
+the model and input. The notebook prints both paths and previews the scores.
 
 ## Local datasets
 
