@@ -150,6 +150,33 @@ Each run writes a new CSV under `data/processed/inference/` with columns
 pooled feature inputs), plus a `.metadata.json` file recording
 the model and input. The notebook prints both paths and previews the scores.
 
+### Intermediate submission: all three datasets with H04
+
+From the repository root, use the completed pooled H04 run:
+
+```bash
+source .venv/bin/activate
+python -m scripts.generate_submissions \
+  --run-dir data/processed/modelling/pooled_data0_data1_data2_group_split_seed42/person_c_runs/20261006T085253_d868f3c6
+```
+
+This loads one fitted H04 model and scores every site using the union of its
+saved training, validation and test features. It does not retrain or threshold
+the probabilities. Original metadata is used only for identifiers and row order.
+The command verifies complete site coverage, unique identifiers, finite scores
+in `[0, 1]`, and the exact header `transcript_id,transcript_position,score`.
+
+Upload these **three CSV files** from `data/processed/submissions/`:
+
+- `Genomies_dataset0.csv` — 121,838 sites
+- `Genomies_dataset1.csv` — 90,810 sites
+- `Genomies_dataset2.csv` — 1,323 sites
+
+`Genomies_submission_metadata.json` records model/input/output checksums for
+reproducibility; it is not a submission file. Existing outputs are preserved;
+use `--output-dir` to generate a new copy. Full-dataset predictions include
+training observations, so their metrics are not a held-out evaluation.
+
 ## Local datasets
 
 Raw datasets and generated Parquet files are excluded from Git because of their size. Obtain the original datasets separately and arrange them as follows:
