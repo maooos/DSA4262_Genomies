@@ -33,6 +33,7 @@ def helpers():
     helper_names = {
         "ranking_metrics", "threshold_metrics", "select_f1_threshold",
         "gene_bootstrap_metrics",
+        "dataset_metrics",
     }
     for cell in notebook["cells"]:
         if cell["cell_type"] != "code":
@@ -104,6 +105,35 @@ def test_gene_bootstrap_matches_explicit_whole_gene_resampling(helpers):
     pd.testing.assert_frame_equal(actual, pd.DataFrame(expected))
     with pytest.raises(ValueError, match="align"):
         helpers["gene_bootstrap_metrics"](labels, scores, genes.iloc[::-1], 0.5)
+
+
+def test_pooled_reports_preserve_dataset_alignment_and_shared_threshold(helpers):
+    index = pd.MultiIndex.from_tuples(
+        [(name, "same_tx", pos) for name in ["data0", "data1", "data2"] for pos in [10, 11]],
+        names=["dataset", "transcript_id", "transcript_position"],
+    )
+    labels = pd.Series([0, 1, 0, 1, 0, 1], index=index)
+    metadata = pd.DataFrame({"group_id": ["human:A"] * 4 + ["synthetic:B"] * 2}, index=index)
+    result = helpers["dataset_metrics"](labels, [.1, .9, .6, .4, .2, .7], metadata, .5).set_index("dataset")
+    assert result.loc["data0", "average_precision"] == 1
+    assert result.loc["data1", "average_precision"] == .5
+    assert result.loc["data2", "f1"] == 1
+    assert result.threshold.eq(.5).all() and result.sites.eq(2).all()
+    with pytest.raises(ValueError, match="ordered index"):
+        helpers["dataset_metrics"](labels, np.zeros(6), metadata.iloc[::-1])
+
+
+def test_stratified_bootstrap_keeps_single_construct_present(helpers):
+    labels = pd.Series([0, 0, 0, 0, 1, 1])
+    groups = pd.Series(["A", "A", "B", "B", "C", "C"])
+    strata = pd.Series(["human"] * 4 + ["synthetic"] * 2)
+    # Without stratification, omitting the only synthetic group loses a class.
+    samples = helpers["gene_bootstrap_metrics"](
+        labels, [.1, .2, .3, .4, .8, .9], groups, .5,
+        n_bootstrap=40, strata=strata,
+    )
+    assert len(samples) == 40
+    assert samples.f1.eq(1).all()
 
 
 @pytest.fixture(scope="module")

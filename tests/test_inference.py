@@ -109,6 +109,21 @@ def test_existing_output_is_preserved(inputs, tmp_path):
     assert output.read_text() == "keep me"
 
 
+def test_pooled_features_keep_overlapping_sites_separate(inputs, tmp_path):
+    _, _, _, artifact, features, model = inputs
+    pooled = pd.concat({"data0": features, "data1": features}, names=["dataset"])
+    path = tmp_path / "pooled.parquet"
+    pooled.to_parquet(path)
+    output = tmp_path / "pooled.csv"
+    metadata = predict_to_csv(artifact, path, output, batch_size=3, threads=1)
+    keys = ["dataset", *KEYS]
+    actual = pd.read_csv(output).set_index(keys)
+    pd.testing.assert_index_equal(actual.index, pooled.index)
+    np.testing.assert_allclose(actual.score, model.predict_proba(pooled)[:, 1])
+    assert metadata["identifier_columns"] == keys
+    assert len(actual) == 2 * len(features)
+
+
 def test_incomplete_parquet_site_is_rejected(inputs):
     reads = pd.read_parquet(inputs[1]).iloc[:-1]
     with pytest.raises(ValueError, match="Incomplete"):

@@ -5,6 +5,9 @@
 - `src/data_parser.py`: converts signal JSON files into per-read Parquet tables.
 - `scripts/parse_data.py`: command-line interface for parsing.
 - `scripts/prepare_datasets.py`: complete raw -> parsed -> gene-annotated dataset workflow.
+- `scripts/run_modelling.py`: command-line execution of the pooled modelling notebook, with an optional preparation-only stop.
+- `src/modelling_data.py`: pooled site identities, shared gene/construct splits and batched features.
+- `AdvancedModel/`: four independent read-level MIL / ensemble notebooks with shared training utilities.
 - `scripts/annotate_gene_ids.py`: attach recovered annotations to all rows of a parsed Parquet.
 - `scripts/inspect_data.py`: inspects the first signal site and its label in data0.
 - `notebooks/EDA_Findings.ipynb`: consolidated findings and next steps.
@@ -29,35 +32,101 @@ Select `.venv` as the Python environment when opening notebooks in VS Code.
 
 ## Start here: raw data to modelling
 
-From the repository root, after placing all six raw files in the layout below:
+Run these commands **from the repository root**. Set up the environment once:
 
 ```bash
+python3.12 -m venv .venv  # Skip if .venv already exists
 source .venv/bin/activate
 python -m pip install -r requirements.txt
+# macOS only, if the OpenMP runtime is not installed:
+brew install libomp
+```
+
+**From raw inputs** (all six teacher-provided files in the layout below):
+
+```bash
 python -m scripts.prepare_datasets --download
 ```
 
-The preparation command runs parsing and annotation for data0, data1 and data2.
-It also downloads the public references when needed; it does not download the
-teacher-provided raw inputs. Complete datasets are written to
-`data/processed/annotated/`. Rerunning verifies and reuses completed stages.
+This parses and annotates data0/data1/data2. `--download` allows public reference
+retrieval; it does not download the raw inputs. Existing complete stages are
+verified and reused. With cached references, omit `--download` for offline use.
 
-Then open `notebooks/data0_modelling_pipeline.ipynb`, select the `.venv` kernel,
-and choose **Restart Kernel and Run All**. It reads the annotated data0 Parquet,
-builds the site features, splits by gene, trains and compares models, and saves
-the selected model and evaluation results. Keep `SAVE_OUTPUTS=True`. The default
-plan runs 21 configurations with five CV folds each; wait for the final cell to
-finish. Copy the printed output directory for the next step.
+**If annotation is already complete**, skip that command and check the inputs:
 
-To score data1 or data2, open `notebooks/inference.ipynb`. In its Settings cell,
-set `RUN_DIR` to that completed training run's directory and set `DATASET` to
-`"data1"` or `"data2"`, then **Restart Kernel and Run All**. These choices read
-the corresponding annotated Parquet. Predictions are saved under
-`data/processed/inference/`. The default historical H04 model is not included
-in Git, so a fresh checkout must select a locally trained model.
+```bash
+ls -lh data/processed/annotated/data{0,1,2}_reads.parquet
+```
 
-Training currently uses data0 only. data1 and data2 remain separate prediction
-datasets; completing annotations does not merge them into the training set.
+**Train one model on all three datasets**, including site feature preparation,
+shared gene/construct splitting, grouped CV, model selection and evaluation:
+
+```bash
+python -m scripts.run_modelling
+```
+
+Alternatively open `notebooks/data0_modelling_pipeline.ipynb`, select `.venv`,
+and choose **Restart Kernel and Run All**. The filename is retained, but it now
+loads **data0 + data1 + data2**. Both entry points execute the same notebook code.
+The CLI uses the active Python environment and saves plot PNGs; it does not
+write executed outputs back into the source notebook.
+
+Optional: **only prepare model inputs, without training**:
+
+```bash
+python -m scripts.run_modelling --prepare-only
+```
+
+This saves `X_train/val/test.parquet`, `y_train/val/test.parquet`, aligned
+metadata and `split_manifest.parquet`, then stops before CV/model fitting.
+The full command already includes this preparation, so you do not need both.
+A later full run creates a new run directory and recomputes preparation.
+Use `--threads 2` to limit model threads, or
+`--processed-dir data/processed/rebuild_1` if preparation used another directory
+(the notebook equivalent is changing `PROCESSED_DIR` in its configuration cell).
+
+The full default plan is **21 configurations × 5 CV folds**, followed by final
+refits. Its output directory is printed and has this form:
+
+```text
+data/processed/modelling/pooled_data0_data1_data2_group_split_seed42/person_c_runs/<run_id>/
+```
+
+Read `test_metrics_by_dataset.csv` for the separate data0/data1/data2 test
+results (`selected_by_cv=True` identifies the chosen model). Other key files are
+`split_dataset_summary.csv`, `cv_oof_metrics_by_dataset.csv`,
+`validation_metrics_by_dataset.csv`, `cv_leaderboard.csv`,
+`test_predictions.parquet`, and `selected_model.joblib`.
+
+For subsequent scoring, set `RUN_DIR` in `notebooks/inference.ipynb` to that
+completed run. `DATASET="internal_test"` scores the pooled held-out observations.
+Choosing an entire data1/data2 input also scores its training observations;
+those full-input scores are not a held-out evaluation of the pooled model.
+
+## Advanced read-level models
+
+[AdvancedModel/README.md](AdvancedModel/README.md) documents four independent
+notebooks, each run with the `.venv` kernel and **Restart Kernel and Run All**:
+
+| Notebook | Architecture |
+|---|---|
+| [01_noisy_or_mil.ipynb](AdvancedModel/01_noisy_or_mil.ipynb) | m6Anet-style read MLP and Noisy-OR pooling |
+| [02_gated_attention_mil.ipynb](AdvancedModel/02_gated_attention_mil.ipynb) | Gated Attention MIL |
+| [03_set_transformer_mil.ipynb](AdvancedModel/03_set_transformer_mil.ipynb) | Two set-attention blocks and gated pooling |
+| [04_mil_h04_ensemble.ipynb](AdvancedModel/04_mil_h04_ensemble.ipynb) | Independently fitted MIL + H04, blended using training OOF |
+
+Install the updated `requirements.txt` for PyTorch. These notebooks share an
+all-read disk cache, use the same human gene / synthetic construct splits, and
+fit k-mer normalization within each fitting partition. Early stopping uses
+inner training groups, then each CV model is refitted on its complete fitting
+partition. Validation selects the threshold and test is evaluated last.
+The ensemble notebook trains its own components; it does not require the other
+three notebooks to have run. No full advanced-model training results are claimed
+by this implementation; only small synthetic tests have been executed.
+
+Outputs go to `data/processed/advanced/runs/<architecture>/<run_id>/`.
+The existing `scripts.run_modelling` command still runs the original pooled
+notebook, not these advanced notebooks.
 
 ## Generate prediction scores
 
@@ -77,7 +146,8 @@ training run, set `RUN_DIR` to your own output directory. It loads the fitted
 model without retraining.
 
 Each run writes a new CSV under `data/processed/inference/` with columns
-`transcript_id,transcript_position,score`, plus a `.metadata.json` file recording
+`transcript_id,transcript_position,score` (with a leading `dataset` column for
+pooled feature inputs), plus a `.metadata.json` file recording
 the model and input. The notebook prints both paths and previews the scores.
 
 ## Local datasets
@@ -395,35 +465,37 @@ The complete workflow is in
 data loading, training-set EDA, feature engineering, grouped cross-validation,
 model comparison, hyperparameter tuning, threshold selection and evaluation.
 
-### Run the notebook
+### Run the notebook or command
 
-1. Install `requirements.txt` into the project's `.venv`. On macOS, XGBoost also
-   requires the OpenMP runtime: `brew install libomp`.
-2. Place all raw datasets in the layout above and run
-   `python -m scripts.prepare_datasets --download` from the repository root.
-   The notebook reads `data/processed/annotated/data0_reads.parquet`; it reports
-   the preparation command if this file is missing.
-3. Open the notebook, select the `.venv` kernel, and choose **Run All**. It can
-   run from the repository root or `notebooks/` and takes several minutes.
+Use `python -m scripts.run_modelling`, or open the notebook with the `.venv`
+kernel and **Run All**. See the exact setup/preparation commands above.
+It loads all three annotated Parquets and fails early if one is missing or
+has incompatible annotations. No raw parsing happens inside modelling.
 
 ### Data and evaluation design
 
-This experiment uses **data0 only**. Each sample is one
-`(transcript_id, transcript_position)` site, aggregated over all its reads;
-the target is the site's binary `label`. data1 is kept separate because of
-overlapping sites, and data2 because it represents synthetic mixtures. The final
-data2 labels are binary under the rule above; their original mixture proportions
-remain in `label_original`.
+The model uses **data0 + data1 + data2 together**. One observation is one
+`(dataset, transcript_id, transcript_position)` site, aggregated over its reads.
+Shared human sites remain separate observations rather than having their
+signals averaged across datasets. The target is binary `label`; data2 retains
+`label_original` and uses `label_original > 0`, meaning positive mixture at the
+site rather than every read being modified.
 
-The outer split shuffles genes with `seed=42` and allocates approximately
-70% / 15% / 15% of genes to train, validation and test. All transcripts, sites
-and reads from a gene remain in the same partition.
+`group_id` uses `human:<gene_id>` across both data0 and data1, and
+`synthetic:<geo_reference_id>` for data2. The same human gene cannot cross
+partitions or CV folds, even if observed in both datasets. For synthetic data,
+all mixtures of a construct stay together, including reused endpoint reads.
+`tx_id_*` identifies mixtures spanning multiple constructs, so it is not a
+suitable gene split key. Construct assignments include inferred mapping
+evidence; the split is conditional on that recovered mapping.
 
-| Partition | Genes | Sites | Positive sites |
-|---|---:|---:|---:|
-| Train | 2,696 | 85,100 | 3,763 |
-| Validation | 578 | 18,352 | 935 |
-| Test | 578 | 18,386 | 777 |
+The outer split sorts and shuffles the union of human genes with `seed=42`,
+allocating approximately 70% / 15% / 15% of genes to train / validation / test.
+Synthetic constructs are shuffled separately with the same seed: four groups
+allow **2 train / 1 validation / 1 test**, not exact 70/15/15 fractions.
+Each dataset/split must contain both classes. Actual counts and rates are saved
+in `split_dataset_summary.csv`; no label-based seed search is performed.
+The historical data0-only partition membership does not apply to this new run.
 
 The shared `X_train`, `X_val` and `X_test` tables contain 162 columns: the
 153 existing engineered features plus nine arithmetic means of the raw
@@ -433,13 +505,19 @@ or 153 engineered features for the full models. `y_train`, `y_val` and
 `y_test` contain aligned labels. Identifiers remain in the index or metadata,
 not in predictor columns. Optional k-mer residuals are disabled.
 
-All candidates use the same **five-fold `GroupKFold` by `gene_id`, within
+All candidates use the same **five-fold `GroupKFold` by `group_id`, within
 the training partition only**. Scaling and class weights are fitted within
 each fold's training portion. The report includes ROC-AUC, trapezoidal PR-AUC
 and average precision (AP), each as **mean ± sample standard deviation
 (`ddof=1`) across folds**. AP and trapezoidal PR-AUC are reported separately.
 
-Model selection maximises mean CV AP, with ROC-AUC and then experiment ID
+Only two training constructs are available for data2, so at most two CV
+assessment folds include it. `cv_oof_metrics_by_dataset.csv` reports metrics on
+each dataset's combined OOF predictions and its actual contributing fold count;
+it does not claim five independent data2 folds. Pooled CV weights sites equally,
+so larger datasets contribute more. Dataset identity is not a predictor.
+
+Model selection maximises mean pooled CV AP, with ROC-AUC and then experiment ID
 as tie-breakers. The selected configuration is fitted on all training data;
 validation selects the threshold that maximises F1. The model is not refitted
 on train + validation afterward. Test results do not determine model choice,
@@ -468,7 +546,10 @@ tree complexity, regularisation and weighting; XGBoost additionally varies
 row and column sampling. Six configurations per boosting family are sampled
 before inspecting scores. This is a bounded search, not an exhaustive one.
 
-### Final recommendation and results
+### Historical data0-only results (not pooled results)
+
+The new pooled pipeline has not been run as part of this code change. The figures
+below describe an earlier **data0-only** model and do not predict the new result.
 
 The completed run `20261004T183731_5bbdbfb1` selected **H04:
 HistGradientBoosting with all 153 engineered features and no class weights**.
@@ -504,7 +585,7 @@ remain necessary for broader performance claims.
 With `SAVE_OUTPUTS=True` (the default), each run writes to a new directory:
 
 ```text
-data/processed/modelling/data0_gene_split_seed42/person_c_runs/<run_id>/
+data/processed/modelling/pooled_data0_data1_data2_group_split_seed42/person_c_runs/<run_id>/
 ```
 
 Key outputs include:
@@ -515,6 +596,12 @@ Key outputs include:
 - `cv_fold_manifest.parquet`, `cv_leaderboard.csv`, `cv_mean_sd_report.csv`,
   and `paired_experiment_changes.csv`: fold membership and model comparisons.
 - `oof_<experiment_id>.parquet`: out-of-fold predictions for each candidate.
+- `split_dataset_summary.csv`, `cv_oof_metrics_by_dataset.csv`,
+  `validation_metrics_by_dataset.csv`, `test_metrics_by_dataset.csv`: separate
+  dataset counts and evaluation, using one shared validation-selected threshold.
+- `test_group_bootstrap_intervals.csv`: pooled intervals stratified by group kind;
+  the single held-out synthetic construct is fixed, so these do not quantify
+  between-construct uncertainty. No data2-specific interval is claimed.
 - `X_*.parquet`, `y_*.parquet`, and `metadata_*.parquet`: prepared inputs,
   labels and site metadata with aligned indices.
 - `selected_model.joblib` and `recommendation.json`: the fitted pipeline,
@@ -525,8 +612,10 @@ Key outputs include:
   input/code checksums and CV completion details.
 
 A cumulative `person_c_experiment_history.csv` in the parent
-`data0_gene_split_seed42/` directory preserves completed experiments across
+`pooled_data0_data1_data2_group_split_seed42/` directory preserves completed experiments across
 runs. These generated files are under the Git-ignored `data/` directory;
-saved notebook outputs provide the results overview in the repository.
-The tests in `tests/test_modelling_notebook.py` check metric calculations,
-gene separation, fold-local scaling and weighting, and append-only logging.
+the source modelling notebook has cleared outputs to avoid displaying stale data0-only results.
+The tests in `tests/test_modelling_notebook.py`, `tests/test_modelling_data.py`
+and `tests/test_inference.py` check metrics, cross-dataset gene separation,
+construct/mixture separation, feature batching, inference identity, fold-local
+scaling and weighting, and append-only logging using small synthetic fixtures.

@@ -126,7 +126,10 @@ def _feature_batches(path, input_kind, batch_size):
 
 def predict_to_csv(model_path, input_path, output_path, *, input_kind="features",
                    batch_size=200_000, threads=4):
-    """Write one score per unique site, plus a JSON record of model/input paths.
+    """Write one score per site observation and a JSON model/input record.
+
+    Pooled feature tables retain dataset in their keys and output CSV, so an
+    overlapping human site in data0/data1 remains two distinct observations.
 
     Existing outputs are preserved. A failed run removes its temporary files.
     Only load model artifacts that you trust, as joblib loads Python objects.
@@ -156,13 +159,20 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
     temporary = output_path.with_name(f".{output_path.name}.{uuid4().hex}.partial")
     temporary_metadata = temporary.with_suffix(".json")
     seen, count = set(), 0
+    output_keys = None
     try:
         with temporary.open("x", encoding="utf-8", newline="") as handle:
             for frame in _feature_batches(input_path, input_kind, batch_size):
                 if frame.empty:
                     continue
                 _validate_keys(frame)
-                keys = list(frame[KEYS].itertuples(index=False, name=None))
+                current_keys = ["dataset", *KEYS] if "dataset" in frame else KEYS
+                if "dataset" in frame and (frame["dataset"].isna().any() or frame["dataset"].astype(str).str.strip().eq("").any()):
+                    raise ValueError("Dataset identifiers must not be empty.")
+                if output_keys is not None and current_keys != output_keys:
+                    raise ValueError("Inconsistent dataset identifiers across batches.")
+                output_keys = current_keys
+                keys = list(frame[output_keys].itertuples(index=False, name=None))
                 if len(set(keys)) != len(keys) or seen.intersection(keys):
                     raise ValueError("Duplicate sites found; expected one complete feature row per site.")
                 seen.update(keys)
@@ -176,7 +186,7 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
                     scores = np.asarray(model.predict_proba(X))[:, positive_column]
                 if scores.shape != (len(frame),) or not np.isfinite(scores).all() or ((scores < 0) | (scores > 1)).any():
                     raise ValueError("Model returned invalid scores; expected one value in [0, 1] per site.")
-                result = frame[KEYS].copy()
+                result = frame[output_keys].copy()
                 result["score"] = scores
                 result.to_csv(handle, index=False, header=count == 0)
                 count += len(result)
@@ -196,6 +206,7 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
             "input_size_bytes": stat.st_size, "input_mtime_ns": stat.st_mtime_ns,
             "output_path": str(output_path), "site_count": count,
             "feature_columns": columns,
+            "identifier_columns": output_keys,
         }
         temporary_metadata.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         temporary_metadata.rename(metadata_path)
