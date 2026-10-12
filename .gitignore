@@ -1,4 +1,5 @@
 # Full datasets
+/.venv
 /data
 /outputs
 
