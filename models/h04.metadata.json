@@ -1,0 +1,39 @@
+{
+  "model_file": "h04.joblib",
+  "sha256": "17d3c4611f933a765360caad1d3ca2478ebd7a81611251623b3e91e32348654a",
+  "model_name": "H04: hgb (engineered, none)",
+  "training_run_id": "20261006T085253_d868f3c6",
+  "training_datasets": [
+    "data0",
+    "data1",
+    "data2"
+  ],
+  "training_partition": "train_only",
+  "experiment": {
+    "experiment_id": "H04",
+    "family": "hgb",
+    "feature_set": "engineered",
+    "weighting": "none",
+    "params": {
+      "min_samples_leaf": 20,
+      "max_leaf_nodes": 31,
+      "max_iter": 350,
+      "learning_rate": 0.03,
+      "l2_regularization": 2.0
+    },
+    "changed": "{\"l2_regularization\": {\"from\": 1.0, \"to\": 2.0}, \"learning_rate\": {\"from\": 0.05, \"to\": 0.03}, \"max_iter\": {\"from\": 200, \"to\": 350}, \"max_leaf_nodes\": {\"from\": 15, \"to\": 31}, \"min_samples_leaf\": {\"from\": 30, \"to\": 20}}",
+    "parent": "E05",
+    "stage": "random_search"
+  },
+  "validation_threshold": 0.20839324867970055,
+  "feature_count": 162,
+  "selected_feature_count": 153,
+  "training_versions": {
+    "sklearn": "1.9.1",
+    "xgboost": "3.4.1",
+    "numpy": "2.5.3",
+    "pandas": "3.0.6"
+  },
+  "historical_test_scores_verified": 32766,
+  "example": "examples/sites.jsonl contains six original data0 sites; a smoke test, not evaluation data."
+}

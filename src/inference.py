@@ -1,4 +1,4 @@
-"""Score sites with saved modelling-notebook artifacts, without refitting."""
+"""Score RNA sites with the saved H04 model, without refitting."""
 
 import hashlib
 import json
@@ -21,13 +21,12 @@ KEYS = SITE_KEY_COLUMNS
 
 
 def load_model_bundle(path):
-    """Accept the dictionary saved by data0_modelling_pipeline.ipynb."""
+    """Load a fitted model bundle, including its required input columns."""
     bundle = joblib.load(path)
     if not isinstance(bundle, dict) or not {"model", "feature_columns"} <= bundle.keys():
         raise ValueError(
-            "Use a selected_model.joblib saved by data0_modelling_pipeline.ipynb "
-            "(a dictionary containing model and feature_columns). "
-            "newadjustmentfolder bundles use a different preprocessing pipeline."
+            "Use models/h04.joblib or a compatible model bundle "
+            "(a dictionary containing model and feature_columns)."
         )
     if not hasattr(bundle["model"], "predict_proba"):
         raise ValueError("The saved model must support predict_proba.")
@@ -126,7 +125,10 @@ def _feature_batches(path, input_kind, batch_size):
 
 def predict_to_csv(model_path, input_path, output_path, *, input_kind="features",
                    batch_size=200_000, threads=4):
-    """Write one score per site observation and a JSON model/input record.
+    """Write a score and thresholded prediction per site, plus input metadata.
+
+    Prediction 1 means score >= the model's saved validation threshold.
+    Bundles must include a finite threshold in [0, 1].
 
     Pooled feature tables retain dataset in their keys and output CSV, so an
     overlapping human site in data0/data1 remains two distinct observations.
@@ -149,6 +151,12 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
         raise FileNotFoundError(input_path)
     bundle = load_model_bundle(model_path)
     model, columns = bundle["model"], bundle["feature_columns"]
+    try:
+        threshold = float(bundle["threshold"])
+    except (KeyError, TypeError, ValueError):
+        raise ValueError("The model bundle must contain a finite threshold in [0, 1].") from None
+    if not np.isfinite(threshold) or not 0 <= threshold <= 1:
+        raise ValueError("The model bundle must contain a finite threshold in [0, 1].")
     classes = np.asarray(model.classes_)
     if classes.shape != (2,) or set(classes.tolist()) != {0, 1}:
         raise ValueError("Expected binary model classes 0 and 1.")
@@ -188,6 +196,7 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
                     raise ValueError("Model returned invalid scores; expected one value in [0, 1] per site.")
                 result = frame[output_keys].copy()
                 result["score"] = scores
+                result["prediction"] = (scores >= threshold).astype(np.int8)
                 result.to_csv(handle, index=False, header=count == 0)
                 count += len(result)
                 print(f"Scored {count:,} sites", flush=True)
@@ -201,12 +210,15 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
             "model_path": str(model_path), "model_sha256": model_hash,
             "model_name": bundle.get("model_name", type(model).__name__),
             "training_run_id": bundle.get("run_id"),
-            "validation_threshold": bundle.get("threshold"),
+            "validation_threshold": threshold,
+            "prediction_threshold": threshold,
+            "prediction_rule": "1 if score >= prediction_threshold, else 0",
             "input_path": str(input_path), "input_kind": input_kind,
             "input_size_bytes": stat.st_size, "input_mtime_ns": stat.st_mtime_ns,
             "output_path": str(output_path), "site_count": count,
             "feature_columns": columns,
             "identifier_columns": output_keys,
+            "output_columns": [*output_keys, "score", "prediction"],
         }
         temporary_metadata.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         temporary_metadata.rename(metadata_path)
@@ -214,5 +226,5 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
     finally:
         temporary.unlink(missing_ok=True)
         temporary_metadata.unlink(missing_ok=True)
-    print(f"Saved {count:,} site scores to {output_path}", flush=True)
+    print(f"Saved {count:,} site scores and predictions to {output_path}", flush=True)
     return metadata

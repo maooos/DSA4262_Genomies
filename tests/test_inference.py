@@ -46,7 +46,8 @@ def inputs(tmp_path):
         LogisticRegression(),
     ).fit(features, [0, 0, 1, 1, 0, 1])
     artifact = tmp_path / "model.joblib"
-    joblib.dump({"model": model, "feature_columns": columns, "model_name": "test model"}, artifact)
+    joblib.dump({"model": model, "feature_columns": columns, "model_name": "test model",
+                 "threshold": 0.37}, artifact)
     return raw, parsed, table, artifact, features, model
 
 
@@ -59,7 +60,10 @@ def test_formats_and_batch_boundaries_match_full_table(inputs, tmp_path, kind, i
     pd.testing.assert_index_equal(result.index, features.index)
     np.testing.assert_allclose(result.score, model.predict_proba(features)[:, 1], rtol=1e-12, atol=1e-12)
     assert record["site_count"] == 6
-    assert list(pd.read_csv(output)) == [*KEYS, "score"]
+    assert list(pd.read_csv(output)) == [*KEYS, "score", "prediction"]
+    np.testing.assert_array_equal(result.prediction, (model.predict_proba(features)[:, 1] >= 0.37).astype(int))
+    assert record["prediction_threshold"] == 0.37
+    assert record["output_columns"] == [*KEYS, "score", "prediction"]
     assert json.loads(output.with_suffix(".metadata.json").read_text())["model_path"] == str(artifact)
 
 
@@ -68,7 +72,7 @@ def test_switch_model_and_csv_dataset(inputs, tmp_path):
     # A second fitted model and a reordered subset must use the chosen model/site IDs.
     model.fit(features, [1, 1, 0, 0, 1, 0])
     second = tmp_path / "second.joblib"
-    joblib.dump({"model": model, "feature_columns": list(features.columns)}, second)
+    joblib.dump({"model": model, "feature_columns": list(features.columns), "threshold": 0.61}, second)
     subset = features.iloc[[4, 0, 2]]
     path = tmp_path / "subset.csv"
     subset.to_csv(path)
@@ -77,6 +81,7 @@ def test_switch_model_and_csv_dataset(inputs, tmp_path):
     result = pd.read_csv(output).set_index(KEYS)
     pd.testing.assert_index_equal(result.index, subset.index)
     np.testing.assert_allclose(result.score, model.predict_proba(subset)[:, 1])
+    np.testing.assert_array_equal(result.prediction, (model.predict_proba(subset)[:, 1] >= 0.61).astype(int))
     assert not np.allclose(result.score, joblib.load(artifact)["model"].predict_proba(subset)[:, 1])
 
 
@@ -121,6 +126,7 @@ def test_pooled_features_keep_overlapping_sites_separate(inputs, tmp_path):
     pd.testing.assert_index_equal(actual.index, pooled.index)
     np.testing.assert_allclose(actual.score, model.predict_proba(pooled)[:, 1])
     assert metadata["identifier_columns"] == keys
+    assert metadata["output_columns"] == [*keys, "score", "prediction"]
     assert len(actual) == 2 * len(features)
 
 
@@ -130,15 +136,40 @@ def test_incomplete_parquet_site_is_rejected(inputs):
         features_from_reads(reads)
 
 
-def test_actual_h04_matches_historical_scores_when_available(tmp_path):
-    run = Path(__file__).resolve().parents[1] / (
-        "data/processed/modelling/data0_gene_split_seed42/person_c_runs/20261005T103445_98fad904"
-    )
-    if not (run / "selected_model.joblib").exists():
-        pytest.skip("Local model/data are excluded from Git")
+def test_bundled_h04_matches_original_feature_scores(tmp_path):
+    root = Path(__file__).resolve().parents[1]
     output = tmp_path / "H04.csv"
-    predict_to_csv(run / "selected_model.joblib", run / "X_test.parquet", output, threads=1)
-    expected = pd.read_parquet(run / "test_predictions.parquet")["score"]
+    predict_to_csv(root / "models/h04.joblib", root / "examples/sites.jsonl", output,
+                   input_kind="reads", batch_size=3, threads=1)
+    expected = pd.read_csv(root / "tests/fixtures/h04_scores.csv").set_index(KEYS)["score"]
     actual = pd.read_csv(output).set_index(KEYS)["score"]
     pd.testing.assert_index_equal(actual.index, expected.index)
     np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+
+
+def test_score_equal_to_saved_threshold_is_positive(inputs, tmp_path):
+    _, _, table, artifact, features, model = inputs
+    scores = model.predict_proba(features)[:, 1]
+    bundle = joblib.load(artifact)
+    bundle["threshold"] = float(scores.min())
+    joblib.dump(bundle, artifact)
+    output = tmp_path / "boundary.csv"
+    predict_to_csv(artifact, table, output, threads=1)
+    result = pd.read_csv(output)
+    assert result.prediction.eq(1).all()
+
+
+@pytest.mark.parametrize("threshold", [None, float("nan"), float("inf"), -0.1, 1.1])
+def test_invalid_saved_threshold_does_not_write_output(inputs, tmp_path, threshold):
+    _, _, table, artifact, *_ = inputs
+    bundle = joblib.load(artifact)
+    if threshold is None:
+        bundle.pop("threshold")
+    else:
+        bundle["threshold"] = threshold
+    joblib.dump(bundle, artifact)
+    output = tmp_path / "invalid_threshold.csv"
+    with pytest.raises(ValueError, match="threshold"):
+        predict_to_csv(artifact, table, output, threads=1)
+    assert not output.exists()
+    assert not output.with_suffix(".metadata.json").exists()
