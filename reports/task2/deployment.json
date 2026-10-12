@@ -1,0 +1,17 @@
+{
+  "id": "appgdep_6accdb02b2948191bdcb46c9fb20f0fa",
+  "project_id": "appgprj_6acccd70e0708191a8b6625906c65b53",
+  "title": "SG-NEx m6A Explorer",
+  "version_id": "appgprj_6acccd70e0708191a8b6625906c65b53~appgver_dcee2a7594908191bfc42f5764030f6d",
+  "type": "publish",
+  "status": "succeeded",
+  "url": "https://sgnex-m6a-explorer.chicacorn256.chatgpt.site",
+  "has_mcp": false,
+  "screenshot_asset_pointer": null,
+  "provider_deployment_id": "site---6acccd70e0708191a8b6625906c65b53",
+  "failure_message": null,
+  "env_set_revision": 0,
+  "updated_at": "2026-10-12T13:05:53.936125+00:00",
+  "commit_sha": "c88b1ac4b2741d9a02268ccc70e6d5aa65897f62",
+  "audience": "owner-private"
+}

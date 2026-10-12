@@ -11,3 +11,6 @@ __pycache__/
 
 # Credentials
 .env
+
+# Regenerated Task 2 explorer data (published separately with the Site)
+/task2_site/dist/data/

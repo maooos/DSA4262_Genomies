@@ -5,6 +5,31 @@ trained model and inference code. The notebook currently targets the local
 `data/raw/data0/dataset0.json.gz` input. Training workflows, EDA notebooks, and
 intermediate caches have been removed.
 
+## Task 2: SG-NEx analysis and explorer
+
+The Task 2 workflow discovers available processed SG-NEx samples, downloads them
+with resume support, applies H04, compares covered sites across cell lines and
+replicates, and builds an interactive explorer. See [the Task 2 guide](docs/TASK2.md)
+for commands, outputs, comparison rules, and the processed-data scope.
+
+```bash
+python -m pip install -r requirements-task2.txt
+python -m scripts.sgnex_download --download --workers 3
+python -m scripts.task2_predict
+python -m scripts.task2_analyse
+python -m scripts.task2_validate
+python -m scripts.task2_report --publish-directory reports/task2
+python -m http.server 8765 --directory task2_site/dist
+```
+
+Open http://localhost:8765 after running the workflow. Predictions and the
+results draft are saved under `outputs/task2/`; the explorer uses precomputed
+data and does not retrain the model.
+
+The completed [private SG-NEx explorer](https://sgnex-m6a-explorer.chicacorn256.chatgpt.site)
+contains all 23 available processed runs. The [results draft](reports/task2/task2_results.html),
+figures, inventory, and validation record are in `reports/task2/`.
+
 ## Setup
 
 Use Python 3.12. From the repository root:
