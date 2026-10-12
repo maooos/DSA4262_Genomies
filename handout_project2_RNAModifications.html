@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>handout_project2_RNAModifications.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> or <div class="page"></div> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<p>DSA4262 Sense-making Case Analysis: Health and Medicine - Data Science in Genomics - 2026</p>
+<hr>
+<h1 id="genomics-project-prediction-of-m6a-rna-modifications-from-direct-rna-seq-data">Genomics Project: Prediction of m6A RNA modifications from direct RNA-Seq data</h1>
+<ul>
+<li><a href="#genomics-project-prediction-of-m6a-rna-modifications-from-direct-rna-seq-data">Genomics Project: Prediction of m6A RNA modifications from direct RNA-Seq data</a>
+<ul>
+<li><a href="#project-overview">Project Overview</a></li>
+<li><a href="#task-1-develop-a-machine-learning-method-to-identify-rna-modifications-from-direct-rna-seq-data"><strong>Task 1</strong>: Develop a machine learning method to identify RNA modifications from direct RNA-Seq data</a>
+<ul>
+<li><a href="#format-description">Format description</a></li>
+<li><a href="#training-data">Training data:</a></li>
+</ul>
+</li>
+<li><a href="#task-2-prediction-of-m6a-sites-in-all-sg-nex-direct-rna-seq-data-sets"><strong>Task 2:</strong> Prediction of m6A sites in all SG-NEx direct RNA-Seq data sets</a></li>
+</ul>
+</li>
+<li><a href="#resources-and-cloud-usage-aws">Resources and cloud usage (AWS)</a></li>
+<li><a href="#submission-and-assessment">Submission and Assessment</a>
+<ul>
+<li><a href="#intermediate-leaderboad">Intermediate Leaderboad</a></li>
+<li><a href="#final-leaderboard">Final Leaderboard</a></li>
+<li><a href="#project-team-submission-requirements">Project Team Submission Requirements</a>
+<ul>
+<li><a href="#1-report">(1) Report</a></li>
+<li><a href="#2-reproducible-code">(2) Reproducible Code</a></li>
+<li><a href="#3-interactive-data-visualisation-item">(3) Interactive Data Visualisation Item</a></li>
+</ul>
+</li>
+<li><a href="#individual-submission-requirements">Individual submission requirements</a>
+<ul>
+<li><a href="#1-please-submit-a-teamwork-summary-canvas">(1) Please submit a teamwork summary (Canvas).</a></li>
+<li><a href="#2-student-evaluation">(2) Student evaluation</a></li>
+</ul>
+</li>
+<li><a href="#assessment-components-total-65">Assessment components (total: 65%)</a></li>
+</ul>
+</li>
+<li><a href="#tips-further-reading-and-additional-information">Tips, further reading and additional information</a></li>
+</ul>
+<h2 id="project-overview">Project Overview</h2>
+<p>In this project you will develop a machine learning method to identify m6A RNA modifications from direct RNA sequencing data. The method will then be applied to analyse data from the SG-NEx project.</p>
+<h2 id="task-1-develop-a-machine-learning-method-to-identify-rna-modifications-from-direct-rna-seq-data"><strong>Task 1</strong>: Develop a machine learning method to identify RNA modifications from direct RNA-Seq data</h2>
+<p>Write a computational method that predicts m6A RNA modification from direct RNA-Seq data. The method should be able to train a new new model, and make predictions on unseen test data. Specifically, your method should fullfil the following requirements:</p>
+<p>We have provided you with one training set (labels and cell line). You may search for additional labels or training sets online to make your method more robust.</p>
+<p>Think about how you would ensure the model's robustness, and how you would communicate and show this in a report. This is an open ended task - we expect you to employ your data science skills and critical judgement to create a convincing report and a robust model.</p>
+<p>Your method should contain two scripts, one for model training, and one for making predictions. The prediction script will be evaluated by other students.</p>
+<p><strong>(1) Model training</strong></p>
+<p>This script will use training data to learn a model. The model can be written to a file in any format.</p>
+<p><strong>Input:</strong></p>
+<ul>
+<li>direct RNA-Seq data, processed by m6Anet (in json format, see below)</li>
+<li>m6A labels (see below for format)</li>
+</ul>
+<p><strong>Output:</strong></p>
+<ul>
+<li>the trained model (any format of your choice)</li>
+</ul>
+<p><strong>(2) Predictions</strong></p>
+<p>This script will apply your model on new data and return the m6A predictions.</p>
+<p><strong>Input:</strong></p>
+<ul>
+<li>direct RNA-Seq data, processed by m6Anet (in json format, see below)</li>
+<li>optional: the pre-trained model from the first script could be used as input argument (it can also be accessed within the code directly instead)</li>
+</ul>
+<p><strong>Output:</strong></p>
+<ul>
+<li>predicted m6A sites (see below for specific output file requirements)</li>
+</ul>
+<p><strong>(3) Benchmarking against m6Anet</strong></p>
+<p>Benchmark your method against m6Anet. Ensure you're considering how your &amp; m6Anet methods differ.</p>
+<p>Note that m6Anet requires Python 3.8 - install it via conda, not pip.</p>
+<p><strong>Code availability and documentation:</strong></p>
+<ul>
+<li>the code needs to be accessible through a public GitHub repository at the time of submission.</li>
+<li>the code needs to be executable</li>
+<li>the repository needs to be documented
+<ul>
+<li>How to install the code/software and any requirement</li>
+<li>How to run the code</li>
+<li>Provide a small test data set to run the code (for the prediction script only, this is not required for the training script)</li>
+<li>the code and documentation will be evaluated by other students on an AWS Ubuntu machine</li>
+</ul>
+</li>
+</ul>
+<h3 id="format-description">Format description</h3>
+<p><strong>direct RNA-Seq data (data.json)</strong></p>
+<p>Each line of data.json describes the nanopore direct RNA sequencing reads that are aligned to the reference transcript sequences. Each line corresponds to one position in a transcripts, and it shows the data from all reads that are aligned to this position.</p>
+<p>Each line is formatted as follows:</p>
+<pre class="hljs"><code><div><span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;ENST00000000233&quot;</span><span class="hljs-punctuation">:</span><span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;244&quot;</span><span class="hljs-punctuation">:</span><span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;AAGACCA&quot;</span><span class="hljs-punctuation">:</span><span class="hljs-punctuation">[</span><span class="hljs-punctuation">[</span><span class="hljs-number">0.00299</span><span class="hljs-punctuation">,</span><span class="hljs-number">2.06</span><span class="hljs-punctuation">,</span><span class="hljs-number">125.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.0177</span><span class="hljs-punctuation">,</span><span class="hljs-number">10.4</span><span class="hljs-punctuation">,</span><span class="hljs-number">122.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.0093</span><span class="hljs-punctuation">,</span><span class="hljs-number">10.9</span><span class="hljs-punctuation">,</span><span class="hljs-number">84.1</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><span class="hljs-punctuation">[</span><span class="hljs-number">0.00631</span><span class="hljs-punctuation">,</span><span class="hljs-number">2.53</span><span class="hljs-punctuation">,</span><span class="hljs-number">125.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.00844</span><span class="hljs-punctuation">,</span><span class="hljs-number">4.67</span><span class="hljs-punctuation">,</span><span class="hljs-number">126.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.0103</span><span class="hljs-punctuation">,</span><span class="hljs-number">6.3</span><span class="hljs-punctuation">,</span><span class="hljs-number">80.9</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><span class="hljs-punctuation">[</span><span class="hljs-number">0.00465</span><span class="hljs-punctuation">,</span><span class="hljs-number">3.92</span><span class="hljs-punctuation">,</span><span class="hljs-number">109.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.0136</span><span class="hljs-punctuation">,</span><span class="hljs-number">12.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">124.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.00498</span><span class="hljs-punctuation">,</span><span class="hljs-number">2.13</span><span class="hljs-punctuation">,</span><span class="hljs-number">79.6</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><span class="hljs-punctuation">[</span><span class="hljs-number">0.00398</span><span class="hljs-punctuation">,</span><span class="hljs-number">2.06</span><span class="hljs-punctuation">,</span><span class="hljs-number">125.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.0083</span><span class="hljs-punctuation">,</span><span class="hljs-number">5.01</span><span class="hljs-punctuation">,</span><span class="hljs-number">130.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.00498</span><span class="hljs-punctuation">,</span><span class="hljs-number">3.78</span><span class="hljs-punctuation">,</span><span class="hljs-number">80.4</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><span class="hljs-punctuation">[</span><span class="hljs-number">0.00664</span><span class="hljs-punctuation">,</span><span class="hljs-number">2.92</span><span class="hljs-punctuation">,</span><span class="hljs-number">120.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.00266</span><span class="hljs-punctuation">,</span><span class="hljs-number">3.94</span><span class="hljs-punctuation">,</span><span class="hljs-number">129.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.013</span><span class="hljs-punctuation">,</span><span class="hljs-number">7.15</span><span class="hljs-punctuation">,</span><span class="hljs-number">82.2</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><span class="hljs-punctuation">[</span><span class="hljs-number">0.0103</span><span class="hljs-punctuation">,</span><span class="hljs-number">3.83</span><span class="hljs-punctuation">,</span><span class="hljs-number">123.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.00598</span><span class="hljs-punctuation">,</span><span class="hljs-number">6.45</span><span class="hljs-punctuation">,</span><span class="hljs-number">126.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.0153</span><span class="hljs-punctuation">,</span><span class="hljs-number">1.09</span><span class="hljs-punctuation">,</span><span class="hljs-number">74.8</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><span class="hljs-punctuation">[</span><span class="hljs-number">0.00398</span><span class="hljs-punctuation">,</span><span class="hljs-number">3.75</span><span class="hljs-punctuation">,</span><span class="hljs-number">126.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.00332</span><span class="hljs-punctuation">,</span><span class="hljs-number">4.3</span><span class="hljs-punctuation">,</span><span class="hljs-number">129.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.00299</span><span class="hljs-punctuation">,</span><span class="hljs-number">1.93</span><span class="hljs-punctuation">,</span><span class="hljs-number">81.9</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span><span class="hljs-punctuation">[</span><span class="hljs-number">0.00498</span><span class="hljs-punctuation">,</span><span class="hljs-number">3.93</span><span class="hljs-punctuation">,</span><span class="hljs-number">127.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.00398</span><span class="hljs-punctuation">,</span><span class="hljs-number">2.51</span><span class="hljs-punctuation">,</span><span class="hljs-number">131.0</span><span class="hljs-punctuation">,</span><span class="hljs-number">0.0111</span><span class="hljs-punctuation">,</span><span class="hljs-number">3.47</span><span class="hljs-punctuation">,</span><span class="hljs-number">79.4</span><span class="hljs-punctuation">]</span> … <span class="hljs-punctuation">}</span>
+</div></code></pre>
+<p>Going from the start of the line to the end we have the following quantities of interest:</p>
+<ul>
+<li><code>ENST00000000233</code>: the transcript ID for this particular row of data.json</li>
+<li><code>244</code>: represents the position within transcript <code>ENST00000000233</code> which is described by the features in this line</li>
+<li><code>AAGACCA</code> describes the combined nucleotides from the neighboring flanking position (positions 243, 244, and 245 of the transcript ENST00000000233). At each position, 5 nucleotides (5-mers) pass through the pore, the sequence of the corresponding 5-mers represented by <code>AAGACCA</code> will be <code>AAGAC</code> (position 243), <code>AGACC</code> (position 244), <code>GACCA</code> (position 245).</li>
+<li>The middle 5-mer of the sequence (in this case <code>AGACC</code>), will always be one of the 18 DRACH motifs (D=A,G, or T, R=A or G, while H is A, C, or T).</li>
+<li>The nested list of numbers represent the features extracted from each read that is mapped to transcript <code>ENST00000000233</code> at position 243 (1- flanking position), 244 (the central position), and 245 (the +1 flanking position). Each feature was summarised from the raw signal data corresponding to positions 243, 244, and 245 of the transcript. The features from the first read will be [0.00299,2.06,125.0,0.0177,10.4,122.0,0.0093,10.9,84.1], from the second read will be [0.00631,2.53,125.0,0.00844,4.67,126.0,0.0103,6.3,80.9], and so on.</li>
+<li>Each position is described using 3 features: (1) length of the direct RNA-Seq signal of the 5-mer nucleotides (dwelling time), (2) standard deviation of the direct RNA-Seq signal, and (3) mean of the direct RNA-Seq signal.</li>
+<li>For each read we have extracted features from segments corresponding to the -1 flanking position (243), the central position (244), and the +1 flanking position, resulting in a total of 9 features for each read (3 features for position 243, followed by 3 features for positions 244 and 245 respectively).</li>
+</ul>
+<p><strong>m6A labels for training</strong></p>
+<p>The m6A labels for training are given as a data.info file with the following format:</p>
+<pre class="hljs"><code><div>gene_id,transcript_id,transcript_position,label
+ENSG00000004059,ENST00000000233,244,0
+ENSG00000004059,ENST00000000233,261,0
+ENSG00000004059,ENST00000000233,316,0
+</div></code></pre>
+<p>Each line describes the coordinates of one position in the transcriptome that can be modified by m6A, and the respective modification label:</p>
+<ul>
+<li>The gene_id column describes the gene associated with the transcript (as given by the transcript_id)</li>
+<li>The transcript_id column describes the transcript ID</li>
+<li>The transcript_position column describes the position in the transcript</li>
+<li>The label column describes whether a specific position within a transcript has the m6A modification. The label will be 0 if the position is unmodified, and 1 if the position has the m6A modification. Modification labels are obtained using m6ACE-Seq.</li>
+</ul>
+<p>The labels (data.info) and the signal data (data.json) can be matched using the transcript_id and transcript_position columns.</p>
+<p><strong>predicted m6A sites</strong></p>
+<p>The following format is expected for the submitted predictions:</p>
+<pre class="hljs"><code><div>transcript_id,transcript_position,score
+ENST00000005260,425,0.03794821493241728
+ENST00000005260,467,0.03789510558677051
+ENST00000005260,542,0.08970181109437239
+ENST00000005260,585,0.014504787924707616
+</div></code></pre>
+<ul>
+<li>The file has to be in csv format, separated by <code>&quot;,&quot;</code></li>
+<li>The values from the columns transcript_id and transcript_position must exactly match the transcript ids and positions in data.json</li>
+<li>The column score describes the probability that the given site has the m6A modification and so it must be a floating point with value between 0 and 1</li>
+</ul>
+<p><strong>model</strong></p>
+<p>You can save the model during model training in any format.</p>
+<h3 id="training-data">Training data:</h3>
+<p>Training data from the Hct116 colon cancer cell line will be made available.</p>
+<h2 id="task-2-prediction-of-m6a-sites-in-all-sg-nex-direct-rna-seq-data-sets"><strong>Task 2:</strong> Prediction of m6A sites in all SG-NEx direct RNA-Seq data sets</h2>
+<p>In task you'll need to use your method to predict m6A RNA modifications in data sets from the SG-NEx data. You'll need to:</p>
+<p>(1) Predict m6A RNA modifications in all direct RNA-Seq data sets from the SG-NEx data using your method.</p>
+<p>(2) Describe the results and compare them across the different cell lines. Summarise and visualise your observations. This task is intentionally open ended, we're looking for you to explore the data &amp; extract what insights you can.</p>
+<p>(3) Create an interactive data visualisation platform for other researchers to explore this data.</p>
+<p>All data is available as .json files through the SG-NEx project: https://github.com/GoekeLab/sg-nex-data which is hosted on AWS (https://registry.opendata.aws/sgnex/).</p>
+<p>Please refer to the <a href="https://github.com/GoekeLab/sg-nex-data/blob/master/docs/AWS_data_access_tutorial.md">data access tutorial</a> for information on how to access these files.</p>
+<h1 id="resources-and-cloud-usage-aws">Resources and cloud usage (AWS)</h1>
+<p>You can use AWS resources for this project, and the code evaluation will also be done on an AWS ubuntu instance. Each team will get US$100 AWS credit per student. The budget will only be managed at the team level, therefore any team member can use up all AWS credits for the team.</p>
+<h1 id="submission-and-assessment">Submission and Assessment</h1>
+<h2 id="intermediate-leaderboad">Intermediate Leaderboad</h2>
+<p>There will be an intermediate submission and leaderboard. We will provide new data (json format) and evaluate your predictions (csv file, see format requirement above) on these data. Additional information will be made available with the evaluation data release.</p>
+<p>Submissions are due: <strong>Oct 7th, 23.59pm</strong>. No questions will be answered between Oct 5th 9pm and Oct 7th, please ask any questions during the class on October 5th.</p>
+<h2 id="final-leaderboard">Final Leaderboard</h2>
+<p>For the final submission we will provide new data (json format) and evaluate your predictions (text file, see format requirement above) on these data. Additional information will be made available with the evaluation data release.</p>
+<p>Submissions are due: <strong>Oct 28th, 23.59pm</strong>. No questions will be answered between Oct 26th 9pm and Oct 28th, please ask any questions during the class on Oct 26th.</p>
+<h2 id="project-team-submission-requirements">Project Team Submission Requirements</h2>
+<h3 id="1-report">(1) Report</h3>
+<p>Please submit a report that summarises your work, methods, and results. The report should include the following sections:</p>
+<ul>
+<li>
+<p>Title</p>
+</li>
+<li>
+<p>Introduction</p>
+</li>
+<li>
+<p>Problem statement</p>
+</li>
+<li>
+<p>Methods</p>
+<ul>
+<li>describe the machine learning model that was used for the final submission and data analysis task</li>
+<li>describe the data sets that you analysed for Task 2 and how they were analysed</li>
+</ul>
+</li>
+<li>
+<p>Results (1): model evaluation</p>
+<ul>
+<li>describe the performance of your model on the data that is provided for model training, using independent training and test data</li>
+<li>compare the final model against a simple baseline model and m6Anet</li>
+<li>if you optimised your model, you can compare the final model against intermediate models that your team developed to show the improvements</li>
+</ul>
+</li>
+<li>
+<p>Results (2): application on the SG-NEx data</p>
+<ul>
+<li>describe the results obtained when you apply your model on the available SG-NEx data</li>
+</ul>
+</li>
+<li>
+<p>Discussion</p>
+</li>
+<li>
+<p>References</p>
+</li>
+<li>
+<p>Code Availability</p>
+<ul>
+<li>Please include the link to the code repository (see below)</li>
+<li>Please include the link to your interactive data visualisation platform (see below)</li>
+<li>The link should include a complete documentation to predict m6A probabilities on a test data set</li>
+</ul>
+</li>
+<li>
+<p>Use of AI methods: AI tools are allowed to be used for all tasks. If you use such a tool, please make sure that no code or text is copied from a public source without acknowledgment. Please document how AI tools were used as a table in the following format:</p>
+<table>
+<thead>
+<tr>
+<th>AI Tool used</th>
+<th>Prompt and output</th>
+<th>How the output was used in the assignment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tool 1</td>
+<td>...</td>
+<td>...</td>
+</tr>
+</tbody>
+</table>
+<p>In addition, document at least two instances where an AI tool's output was wrong, misleading, or rested on an unverified assumption; how you detected it; and what you did about it. Teams reporting no such instances must explain how they verified that.</p>
+</li>
+</ul>
+<p>The report should not exceed 5 pages, excluding title page (optional), table of content (optional), and references. The report should be written in Arial font size 11 (Arial font size 9-11 for figure captions, tables, references).</p>
+<h3 id="2-reproducible-code">(2) Reproducible Code</h3>
+<p>Please make the final code, documentation, and test data set accessible through GitHub, and provide a full documentation on how to learn a model and how to make predictions.</p>
+<h3 id="3-interactive-data-visualisation-item">(3) Interactive Data Visualisation Item</h3>
+<p>Please create an interactive data visualisation for researchers to explore your results for Task 2. You may choose which part of your results you want to focus on, thinking about what data might be most useful for biological researchers, and in what format. You can choose to host it on any platform (including ChatGPT Sites using Codex).</p>
+<p>Submissions are due: <strong>Oct 28th, 23.59pm</strong>. No questions will be answered between Oct 26th 9pm and Oct 28th, please ask any questions during the class on Oct 26th.</p>
+<h2 id="individual-submission-requirements">Individual submission requirements</h2>
+<h3 id="1-please-submit-a-teamwork-summary-canvas">(1) Please submit a teamwork summary (Canvas).</h3>
+<p>This summary will be treated as confidential and will not be shared with any other student.</p>
+<ul>
+<li>Briefly describe the contribution for each team member in 1-3 sentences.</li>
+<li>Please rate each team member from 1-5:
+<ul>
+<li>5: the team member was outstanding, leading the team effort, or contributing the most important ideas and solutions. Please rate one student with a 5</li>
+<li>4: the team member was actively involved and contributed ideas and solutions that were essential to the team's final submission</li>
+<li>3: the team member was actively involved and helped with tasks that were essential to the team's final submission</li>
+<li>2: the team member was only passively involved in the team's solution with a smaller or minor contribution</li>
+<li>1: team member was not or only minimally involved, not cooperating, or frequently absent</li>
+</ul>
+</li>
+</ul>
+<p>Submissions are due: <strong>Oct 29th, 23.59pm</strong>. (one day after the team submission)</p>
+<h3 id="2-student-evaluation">(2) Student evaluation</h3>
+<p>Each student will be assigned to evaluate other teams' projects, please refer to the separate document.</p>
+<h2 id="assessment-components-total-65">Assessment components (total: 65%)</h2>
+<ul>
+<li>Report (including interactive data visualisation) (50%)</li>
+<li>Documentation: code needs to be executable and results need to be reproducible (5%)</li>
+<li>Model performance: results will be evaluated using an unknown test dataset and compared against a random classifier and a simple baseline model (with ROC AUC and Precision-Recall AUC) (5%)
+<ul>
+<li>the ranking in comparison with other teams will not be used for grading</li>
+</ul>
+</li>
+<li>Individual component (5%)
+<ul>
+<li>Each student is expected to attend in person and actively contribute to the project solution</li>
+<li>Each student should have a specific contribution in report writing, model development, and implementation</li>
+<li>Evaluation will be based on confidential peer reports</li>
+</ul>
+</li>
+<li>AWS overspending will lead to a deduction by 5%</li>
+<li>Class participation is required, no-shows will also lead to a deduction</li>
+</ul>
+<p>The project will be evaluated based on the clarity and presentation, the domain understanding, the methodology, the innovativeness and creativity. The final ranking in comparison with other teams will not be used for grading.</p>
+<h1 id="tips-further-reading-and-additional-information">Tips, further reading and additional information</h1>
+<p>The SG-Nex project is described in this publication:</p>
+<p>Chen, Ying, et al. A systematic benchmark of Nanopore long-read RNA sequencing for transcript-level analysis in human cell lines. Nature Methods 22, 801–812 (2025). doi: <a href="https://doi.org/10.1038/s41592-025-02623-4">https://doi.org/10.1038/s41592-025-02623-4</a></p>
+<p>m6Anet is described in the following manuscript:</p>
+<p>Hendra, C., Pratanwanich, P.N., Wan, Y.K. et al. Detection of m6A from direct RNA sequencing using a multiple instance learning framework. Nature Methods 19, 1590–1598 (2022). https://doi.org/10.1038/s41592-022-01666-1</p>
+
+</body>
+</html>
