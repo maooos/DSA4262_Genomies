@@ -1,0 +1,169 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Task 2 · SG-NEx results draft</title>
+<style>body{font:11pt Arial,sans-serif;color:#1e3437;max-width:950px;margin:40px auto;line-height:1.5}h1{font-size:22pt}h2{font-size:14pt;margin-top:28px}table{border-collapse:collapse;width:100%;font-size:9pt}th,td{text-align:left;padding:7px;border-bottom:1px solid #ddd}th{background:#eef3ee}figure{margin:22px 0;break-inside:avoid}img{width:100%}figcaption,.note{font-size:9pt;color:#596862}code{font-size:9pt;overflow-wrap:anywhere}@media print{body{margin:0}@page{size:A4;margin:18mm}}</style>
+<h1>Task 2: H04 predictions across SG-NEx</h1>
+<p class="note">Results-section draft · generated from saved predictions · 2026-10-12T12:57:31.263125+00:00 · Status: complete_processed_inventory</p>
+<h2>Data and analysis</h2>
+<p>H04 was applied without retraining to 23 of 23 processed direct-RNA sequencing runs across 7 cell lines. The live SG-NEx m6Anet inventory contains 23 runs (33.37 GB); 33 additional direct-RNA runs in the metadata have no JSON input in that directory. Thus this analysis covers the available processed inventory, not every raw SG-NEx experiment.</p>
+<p>The model generated 28,670,080 sample–site predictions. All sites were scored, with a primary analysis restricted to observations supported by at least 20 reads per run. Scores were thresholded at 0.208393249. Technical-run scores passing the coverage filter were averaged within each named replicate, followed by an equally weighted mean across replicates. A site needed at least two observed replicates in each cell line for pairwise comparison. Sites were matched on transcript ID, position and 7-mer; missing observations were excluded, never treated as negative.</p>
+<h2>Coverage and predicted-positive fractions</h2>
+<p>Ensembl version suffixes were harmonized when at most one explicit version was observed for a stable transcript ID. Original IDs are preserved, and sites still require matching positions and 7-mers. The build harmonized 13,431 distinct input identifiers. The MCF7 naming-mismatch investigation is documented in the Task 2 guide. Known conflicting transcript versions are kept separate; unversioned identifiers still rely on the shared reference convention.</p>
+<p>The primary analysis retained 2,983,948 sample–site observations. Run-level predicted-positive fractions ranged from 3.44% to 8.58%. These fractions use different eligible-site sets and therefore cannot establish a ranking of true cellular modification abundance.</p>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Cell line</th>
+      <th>Runs</th>
+      <th>Replicates</th>
+      <th>Eligible sites/run</th>
+      <th>Positive sites/run (%)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A549</td>
+      <td>2</td>
+      <td>2</td>
+      <td>66,382–187,021</td>
+      <td>4.56–6.67</td>
+    </tr>
+    <tr>
+      <td>H9</td>
+      <td>6</td>
+      <td>3</td>
+      <td>34,202–147,467</td>
+      <td>3.44–5.89</td>
+    </tr>
+    <tr>
+      <td>HEYA8</td>
+      <td>5</td>
+      <td>3</td>
+      <td>40,086–202,232</td>
+      <td>3.61–5.74</td>
+    </tr>
+    <tr>
+      <td>Hct116</td>
+      <td>3</td>
+      <td>2</td>
+      <td>135,870–238,748</td>
+      <td>5.58–8.58</td>
+    </tr>
+    <tr>
+      <td>HepG2</td>
+      <td>2</td>
+      <td>2</td>
+      <td>247,181–259,535</td>
+      <td>5.32–7.16</td>
+    </tr>
+    <tr>
+      <td>K562</td>
+      <td>3</td>
+      <td>3</td>
+      <td>79,122–100,379</td>
+      <td>4.97–6.60</td>
+    </tr>
+    <tr>
+      <td>MCF7</td>
+      <td>2</td>
+      <td>2</td>
+      <td>109,315–143,091</td>
+      <td>5.47–5.71</td>
+    </tr>
+  </tbody>
+</table>
+<figure><img src="sample_overview.png" alt="Per-run coverage and predicted-positive fractions"><figcaption>Figure 1. Each point represents a sequencing run. Coverage filtering is applied consistently, but expression and sequencing depth still change which sites are observable.</figcaption></figure>
+<h2>Reproducibility and between-cell-line overlap</h2>
+<p>Within-cell-line replicate Spearman correlations on shared covered sites ranged from 0.810 to 0.873 (median 0.851). Because sequence is an input to H04, score agreement may partly reflect shared sequence features and should not be interpreted as independent biological validation.</p>
+<p>The largest pairwise positive-site Jaccard similarity was 0.686 for H9 versus HEYA8, based on 89,192 shared eligible sites. The smallest was 0.560 for Hct116 versus MCF7, based on 69,316 shared eligible sites. Pairwise eligible universes differ; these similarities are descriptive.</p>
+<figure><img src="cell_line_overlap.png" style="max-width:600px" alt="Shared-site Jaccard heatmap"><figcaption>Figure 2. Jaccard similarity among positive predictions, restricted to sites meeting the replicate and coverage requirements in both cell lines. Diagonal cells are omitted.</figcaption></figure>
+<h2>Candidate differences and sensitivity</h2>
+<p>Candidate sites require all observed qualifying replicates in one cell line to be positive and all in the other to be negative, with at least two per group. The examples below are selected by absolute mean-score difference from the strongest candidate in each pair. They are hypotheses for follow-up, not statistically significant differential-modification calls.</p>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Comparison</th>
+      <th>Transcript</th>
+      <th>Position</th>
+      <th>Score A</th>
+      <th>Score B</th>
+      <th>Difference</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>HepG2 / K562</td>
+      <td>ENST00000565644</td>
+      <td>3141</td>
+      <td>0.856</td>
+      <td>0.060</td>
+      <td>0.796</td>
+    </tr>
+    <tr>
+      <td>Hct116 / K562</td>
+      <td>ENST00000565644</td>
+      <td>3141</td>
+      <td>0.834</td>
+      <td>0.060</td>
+      <td>0.773</td>
+    </tr>
+    <tr>
+      <td>A549 / K562</td>
+      <td>ENST00000451270</td>
+      <td>1212</td>
+      <td>0.788</td>
+      <td>0.029</td>
+      <td>0.759</td>
+    </tr>
+    <tr>
+      <td>A549 / HepG2</td>
+      <td>ENST00000451270</td>
+      <td>1212</td>
+      <td>0.788</td>
+      <td>0.037</td>
+      <td>0.751</td>
+    </tr>
+    <tr>
+      <td>A549 / MCF7</td>
+      <td>ENST00000451270</td>
+      <td>1212</td>
+      <td>0.788</td>
+      <td>0.046</td>
+      <td>0.742</td>
+    </tr>
+  </tbody>
+</table>
+<p>Coverage sensitivity at the saved score threshold:</p>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Minimum reads/run</th>
+      <th>Eligible sample–site observations</th>
+      <th>Median pairwise Jaccard</th>
+      <th>Median shared sites/pair</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>10</td>
+      <td>5750947</td>
+      <td>0.607</td>
+      <td>131782.000</td>
+    </tr>
+    <tr>
+      <td>20</td>
+      <td>2983948</td>
+      <td>0.622</td>
+      <td>65840.000</td>
+    </tr>
+    <tr>
+      <td>50</td>
+      <td>1101143</td>
+      <td>0.590</td>
+      <td>22844.000</td>
+    </tr>
+  </tbody>
+</table>
+<p>Additional score-threshold sensitivity results (0.15, saved threshold, 0.30 and 0.50) are in <code>sample_summary.csv</code> and the interactive explorer. Full pairwise tables retain every compared site; the explorer displays up to 500 candidates and a fixed random sample of 2,000 points per scatter plot, while computing statistics on all shared sites.</p>
+<h2>Interpretation and limitations</h2>
+<p>These are predictions from an uncalibrated classifier, not modification stoichiometry measurements. Differences may reflect expression, coverage, batch effects, sequence composition or transfer from the model's training distribution. Transcript isoforms are kept separate and may represent the same genomic nucleotide. The model metadata names data0/data1/data2 without source accessions; potential overlap with SG-NEx training-related samples remains unresolved. This analysis is therefore not an independent accuracy evaluation. Experimental independence of named replicate groups should be confirmed before inferential testing.</p>
+<p>All raw-input SHA256 values are in download audit files, and the model checksum and prediction thresholds accompany each sample's output. Model SHA256: <code>17d3c4611f933a765360caad1d3ca2478ebd7a81611251623b3e91e32348654a</code>.</p>
+<p>Sources: <a href="https://github.com/GoekeLab/sg-nex-data">SG-NEx project and metadata</a>; <a href="https://github.com/GoekeLab/sg-nex-data/blob/master/docs/AWS_data_access_tutorial.md">processed-data access tutorial</a>. Code: this repository's <code>scripts/task2_*.py</code> and <code>src/task2_analysis.py</code>.</p></html>

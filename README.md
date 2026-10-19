@@ -1,125 +1,166 @@
-# H04 inference
+# SG-NEx Atlas
 
-Score RNA sites and predict binary labels with the saved pooled H04 model. This repository contains the
-trained model and inference code. The notebook currently targets the local
-`data/raw/data0/dataset0.json.gz` input. Training workflows, EDA notebooks, and
-intermediate caches have been removed.
+An interactive website for exploring H04-predicted m6A RNA modifications across
+**23 SG-NEx sequencing runs and seven cell lines**.
 
-## Setup
+**For teammates: clone the code, get the two dashboard data folders, then start
+Docker.** The datasets are shared separately because they are too large to keep
+in this Git repository. A fresh clone does not include them.
 
-Use Python 3.12. From the repository root:
+## Start the website
+
+### 1. Get the code and Docker
+
+- Clone or download this repository and open its folder in VS Code.
+- Install and start [Docker Desktop](https://docs.docker.com/get-started/get-docker/).
+- Open a terminal in the project folder: the one containing `Dockerfile`,
+  `compose.yaml` and this `README.md`.
+
+You do not need to install Python or download the original 33.4 GB dataset to
+use the website with the shared dashboard data.
+
+### 2. Put the dashboard data in these exact folders
+
+Ask a teammate who already has the data for **both complete folders**, from the
+same analysis run:
+
+| Folder to copy | Where to put it in your project | Approximate size |
+| --- | --- | --- |
+| Dashboard `data` folder | `task2_site/dist/data/` | 112 MB |
+| `query_data` folder | `task2_site/query_data/` | 340 MB |
+
+After copying, your project should look like this:
+
+```text
+DSA4262_Genomies/                 ← your project folder
+├── README.md
+├── Dockerfile
+├── compose.yaml
+└── task2_site/
+    ├── dist/
+    │   ├── index.html           ← website code, already in the repository
+    │   ├── app.js
+    │   └── data/               ← copy the dashboard data here
+    │       ├── summary.json
+    │       ├── transcript_index.json
+    │       ├── transcript_aliases.json
+    │       ├── pairs/          ← copy the whole folder
+    │       └── transcripts/    ← copy the whole folder, including .json.gz files
+    └── query_data/             ← copy the query data here
+        ├── manifest.json
+        ├── identifiers.parquet
+        ├── SGNex_A549_directRNA_replicate5_run1.parquet
+        └── ...                ← all 23 sample .parquet files
+```
+
+**Copy the whole folders, not just the JSON files open in VS Code.** Avoid an
+extra folder level such as `task2_site/dist/data/data/`. The dashboard `data/`
+folder belongs under `task2_site/dist/`, not at the project root.
+
+If you receive a `task2-data.tar.gz` archive prepared using the instructions below,
+place it in the project folder and extract it there:
 
 ```bash
-python3.12 -m venv .venv  # Skip if the existing environment is available
-source .venv/bin/activate
-python -m pip install -r requirements.txt
+tar -xzf task2-data.tar.gz
 ```
 
-The pinned numerical-library versions match the saved model. H04 uses
-scikit-learn; PyTorch and XGBoost are not needed.
+This puts both folders in the correct locations. Keep the `.json.gz` files inside
+`transcripts/` compressed; the website reads them directly.
 
-## Run the notebook
+### 3. Start Docker and open the website
 
-Open `notebooks/inference.ipynb`, select the `.venv` kernel, and edit its Settings
-cell:
-
-```python
-MODEL_PATH = ROOT / "models/h04.joblib"
-INPUT_PATH = ROOT / "data/new_dataset.json.gz"  # Absolute paths also work
-INPUT_KIND = "reads"
-```
-
-Choose **Restart Kernel and Run All**. The notebook defaults to the local
-`data/raw/data0/dataset0.json.gz` input. For a quick setup check without the full
-dataset, set `INPUT_PATH = ROOT / "examples/sites.jsonl"`. Each run writes a
-uniquely named CSV and companion metadata JSON to `outputs/`.
-
-## Run from the terminal
+From the project folder, run:
 
 ```bash
-python -m scripts.predict \
-  --input data/new_dataset.json.gz \
-  --output outputs/new_dataset_H04.csv
+docker compose up --build -d
 ```
 
-For the included six-site example:
+Open **http://localhost:8080** in your browser.
+
+The first build needs internet to download dependencies. Once built, the website
+uses local data. Docker starts both the website and its custom-filter query
+service automatically.
+
+## What you can do on the website
+
+| Page or control | Use it to… |
+| --- | --- |
+| Study overview | See per-run predictions, cell-line overlap and replicate agreement. |
+| Compare cell lines | Find matched sites with different predicted scores in two cell lines. |
+| Explore a transcript | Inspect scores, read counts and missing observations at individual positions. |
+| How to read the data | Understand the methods, limitations and results report. |
+| Minimum read support | Enter a whole number ≥1 and click **Apply**, or use the 10/20/50 presets. |
+
+Custom read filters recalculate from saved predictions; they do not retrain H04.
+Very low cutoffs can take a minute or more. A model score is not a measured
+fraction of modified RNA, and a missing observation does not mean unmodified.
+
+## Everyday Docker commands
+
+Run these from the project folder:
 
 ```bash
-python -m scripts.predict --input examples/sites.jsonl --output outputs/example.csv
+docker compose up -d                      # Start again after the first build
+docker compose down                       # Stop the website
+docker compose ps                         # Check whether services are healthy
+docker compose logs dashboard queries     # Read startup or calculation errors
+docker compose up --build -d               # Rebuild after code or data changes
 ```
 
-Use `--input-kind features` for a prepared site-feature CSV or Parquet. Optional
-flags include `--model`, `--threads` (default 4), and `--batch-size` (default
-200,000). Run `python -m scripts.predict --help` for details. Existing output
-files are preserved; choose a new filename when rerunning.
+| Problem | What to check |
+| --- | --- |
+| Docker cannot connect to its engine | Open Docker Desktop and wait until it is running. |
+| Build fails because a data file or folder is missing | Check the folder tree above, especially `dist/data/summary.json` and `query_data/manifest.json`. |
+| Query service reports that data snapshots differ | Copy both complete dashboard folders from the same analysis run, then rebuild. |
+| Port 8080 is already in use | Create a `.env` file in the project folder containing `PORT=8081`, run the startup command again, then open http://localhost:8081. |
+| Website still shows older results | Rebuild with `docker compose up --build -d`, then refresh your browser. |
 
-## Input format
+## Share the dashboard data with a teammate
 
-`reads` accepts project-format JSON/JSONL (optionally gzip-compressed) or a
-per-read Parquet table. JSON must have one complete site per line:
-
-```json
-{"transcript_A":{"123":{"AGAACAT":[[0.1,1.0,70.0,0.2,1.1,71.0,0.3,1.2,72.0]]}}}
-```
-
-Each read has nine finite measurements in this exact order:
-
-1. Upstream dwell time, signal SD, signal mean.
-2. Central dwell time, signal SD, signal mean.
-3. Downstream dwell time, signal SD, signal mean.
-
-Use the same units and signal preprocessing as the training inputs. Dwell times
-must be positive, and sequences must contain seven A/C/G/T bases. Labels and
-gene IDs are unnecessary. FAST5/POD5 files require upstream signal processing;
-they are not accepted directly.
-
-Per-read Parquet requires `transcript_id`, `transcript_position`, `sequence`,
-`n_reads`, and the nine columns listed in `src.feature_engineering.RAW_FEATURE_NAMES`.
-Keep all reads for each site contiguous and complete. Process separate datasets
-as separate inputs so overlapping site identifiers do not collide.
-
-`features` accepts a CSV/Parquet containing site identifiers and all 162 input
-columns recorded in the model bundle. The saved pipeline selects its 153
-engineered features. Raw reads automatically go through the original feature
-engineering code, including log dwell times, signal summaries, contrasts, and
-sequence encodings.
-
-## Output
-
-One row per site, with columns `transcript_id,transcript_position,score,prediction`. A pooled
-feature table with a `dataset` key retains that extra identifier in its CSV.
-The companion `.metadata.json` records the model checksum, input, site count,
-output columns, and the threshold and rule used for prediction.
-
-Scores are continuous class-1 model outputs, not guaranteed calibrated
-probabilities. Inference does not retrain the model. The `prediction` column uses
-the saved validation threshold (approximately 0.208393 for H04): `1` means
-predicted modified (`score >= threshold`), and `0` means predicted unmodified.
-Both the original score and the predicted label are saved. Model bundles must
-include a finite threshold in [0, 1].
-
-## Files to retain
-
-- `models/h04.joblib`: the fitted model, feature selection, and threshold (~695 KB).
-- `models/h04.metadata.json`: checksum and training provenance.
-- `src/`: the inference, parsing, and feature-engineering modules.
-- `notebooks/inference.ipynb` and/or `scripts/predict.py`: inference entry points.
-- `requirements.txt`: runtime dependencies, including the notebook kernel.
-
-`examples/` and `tests/` are small verification assets. `data/` is available for
-future inputs and `outputs/` holds predictions; both are ignored by Git. Keep
-the model and code together when transferring this project. The `.venv/`
-environment can be recreated and need not be transferred.
-
-## Verification
+On a machine that already has both data folders, run this from the project folder:
 
 ```bash
-python -m pip install -r requirements-dev.txt
-python -m pytest -q
+tar -czf task2-data.tar.gz task2_site/dist/data task2_site/query_data
 ```
 
-Before removing the historical data, the relocated model reproduced all 32,766
-saved internal-test scores within `1e-12` tolerance. The included six raw data0
-sites also reproduced their scores from the original saved features. The
-regression test retains this small check without requiring the training data;
-the example is not a new evaluation set.
+Transfer the archive through your team's shared storage or a direct file transfer.
+Your teammate extracts it using the command in step 2. The two folders total about
+452 MB before archiving. The archive and dataset folders are ignored by Git;
+commit the code, Docker setup, model and documentation to GitHub.
+
+## Optional: download or rerun the full analysis
+
+**Skip this section if you only want to use the website and already have the two
+dashboard data folders.**
+
+If nobody has the dashboard data, the pipeline can download the processed SG-NEx
+inputs, run H04 and generate both folders automatically:
+
+```bash
+docker compose run --rm --build analysis -m scripts.task2_pipeline
+docker compose up --build -d
+```
+
+This downloads about **33.4 GB**. Allow at least **45 GB of free disk space** and
+start with **8 GB or more of Docker memory**. Full analysis may need more memory.
+
+If transferring existing research inputs or outputs instead, use these locations:
+
+| Data you have | Exact location in the project | Needed just to open the website? |
+| --- | --- | --- |
+| Processed SG-NEx input for a sample | `data/sgnex/raw/<sample_id>/data.json` | No |
+| That sample's download audit | `data/sgnex/raw/<sample_id>/download.json` | No; keep it with the input when transferring. |
+| SG-NEx manifest and inventory | `data/sgnex/manifest.csv` and `data/sgnex/inventory.json` | No |
+| Saved full prediction outputs | `outputs/task2/predictions/` | No; keep each sample's CSV, Parquet and metadata JSON together. |
+| Generated analysis tables and figures | `outputs/task2/analysis/` | No |
+| Original data0 input used by the inference notebook | `data/raw/data0/dataset0.json.gz` | No |
+
+For example, one SG-NEx input belongs at
+`data/sgnex/raw/SGNex_A549_directRNA_replicate5_run1/data.json`.
+Keep the sample folder names unchanged. The pipeline creates the required folders
+when downloading or generating results; these local data and output folders are
+excluded from Git.
+
+See the [Task 2 team guide](docs/TASK2.md) for rerunning selected stages,
+validation and the comparison rules. See the [H04 inference guide](docs/INFERENCE.md)
+for using the notebook or scoring your own input files.

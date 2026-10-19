@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Explore predicted m6A RNA modifications across seven SG-NEx cell lines, with coverage-aware comparisons and transcript-level evidence."
+    />
+    <title>SG-NEx Atlas · RNA modification explorer</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to results</a>
+    <aside class="sidebar">
+      <a class="brand" href="#overview"
+        ><span class="brand-icon">m⁶A</span
+        ><span
+          >SG-NEx <b>Atlas</b><small>RNA MODIFICATION EXPLORER</small></span
+        ></a
+      >
+      <div class="nav-label">EXPLORE THE DATA</div>
+      <nav aria-label="Main navigation">
+        <a href="#overview" data-page="overview"
+          ><span class="nav-icon">◫</span> Study overview</a
+        >
+        <a href="#compare" data-page="compare"
+          ><span class="nav-icon">⇄</span> Compare cell lines</a
+        >
+        <a href="#transcript" data-page="transcript"
+          ><span class="nav-icon">≋</span> Explore a transcript</a
+        >
+        <a href="#methods" data-page="methods"
+          ><span class="nav-icon">ⓘ</span> How to read the data</a
+        >
+      </nav>
+      <div class="sidebar-note">
+        <span class="live-dot"></span> H04 model · SG-NEx data
+        <p>From predicted patterns<br />to questions worth exploring.</p>
+        <a
+          href="https://github.com/GoekeLab/sg-nex-data"
+          target="_blank"
+          rel="noreferrer"
+          >About the SG-NEx project ↗</a
+        >
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <span
+          >RESEARCH WORKSPACE <span class="slash">/</span>
+          <span id="breadcrumb">Study overview</span></span
+        ><span class="dataset-badge" id="dataset-badge">Loading study…</span>
+      </header>
+      <main id="main" tabindex="-1">
+        <div id="load-error" class="error" role="alert" hidden></div>
+        <div id="loading" class="loading">Loading the study summary…</div>
+        <div id="app" hidden>
+          <section class="page-heading">
+            <div>
+              <div class="eyebrow" id="eyebrow">THE SG-NEX COLLECTION</div>
+              <h1 id="page-title">A closer look at RNA modification.</h1>
+              <p id="page-description">
+                Explore predicted m6A sites across cell lines. Compare patterns,
+                then inspect the evidence behind each site.
+              </p>
+            </div>
+            <a class="button secondary" href="#methods"
+              >Reading guide <span>↗</span></a
+            >
+          </section>
+          <div class="filterbar">
+            <div class="filter-label">
+              <span class="filter-symbol">≡</span>
+              <div>
+                <strong><label for="minimum-reads">Minimum read support</label></strong
+                ><small>Applied to each sequencing run</small>
+              </div>
+            </div>
+            <form id="coverage-form" class="coverage-form" novalidate>
+              <input id="minimum-reads" type="number" min="1" step="1"
+                max="9007199254740991" value="20" required inputmode="numeric"
+                aria-describedby="coverage-help coverage-error" />
+              <button class="button secondary" type="submit">Apply</button>
+            </form>
+            <div
+              class="segmented"
+              role="group"
+              aria-label="Minimum reads per run"
+            >
+              <button data-coverage="10" aria-pressed="false">10 reads</button
+              ><button data-coverage="20" aria-pressed="true">
+                20 reads <span>DEFAULT</span></button
+              ><button data-coverage="50" aria-pressed="false">50 reads</button>
+            </div>
+            <button id="reset" class="text-button">Reset view ↺</button>
+            <p id="coverage-help" class="coverage-help">Enter any whole number ≥1. Higher support keeps fewer sites. Default: 20 reads.</p>
+            <p id="coverage-error" class="coverage-error" role="alert" hidden></p>
+          </div>
+
+          <section id="page-overview" class="page">
+            <div id="overview-message" role="status"></div>
+            <div id="overview-content">
+            <div id="overview-stats" class="stats"></div>
+            <div class="grid overview-grid">
+              <article class="card">
+                <div class="card-head">
+                  <div>
+                    <div class="eyebrow">01 / SAMPLE LANDSCAPE</div>
+                    <h2>How often is a site called modified?</h2>
+                  </div>
+                  <button
+                    id="download-overview"
+                    class="text-button"
+                    title="Download run-level summaries with current filters"
+                  >
+                    Download CSV ↓
+                  </button>
+                </div>
+                <p class="muted">
+                  Each dot is one sequencing run. The line connects the lowest
+                  and highest fractions within a cell line.
+                </p>
+                <div class="inline-control">
+                  <label for="overview-threshold">Prediction threshold</label
+                  ><select id="overview-threshold"></select>
+                </div>
+                <div id="fraction-chart" class="fraction-chart"></div>
+                <div class="chart-caption">
+                  Predicted-positive sites ÷ sites meeting read support, per run
+                </div>
+                <div id="overview-insight" class="interpretation"></div>
+                <p class="footnote">
+                  Runs cover different sets of sites. These percentages do not
+                  rank true cellular m6A abundance. A model score is not a
+                  measured modification fraction.
+                </p>
+              </article>
+              <article class="card">
+                <div class="card-head">
+                  <div>
+                    <div class="eyebrow">02 / SHARED PATTERNS</div>
+                    <h2>Which cell lines share predictions?</h2>
+                  </div>
+                </div>
+                <p class="muted">
+                  Positive-site overlap on sites measurable in both cell lines.
+                  Select a square to explore that comparison.
+                </p>
+                <div id="overlap-heatmap" class="heatmap-wrap"></div>
+                <div class="heatmap-legend">
+                  <span>Less overlap</span><span class="gradient"></span
+                  ><span>More overlap</span>
+                </div>
+                <p class="footnote">
+                  Jaccard similarity: shared positive sites ÷ sites positive in
+                  either group. Each pair uses its own shared eligible sites and
+                  the saved H04 threshold.
+                </p>
+              </article>
+            </div>
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="eyebrow">03 / REPLICATE SUPPORT</div>
+                  <h2>Do repeat samples tell a similar story?</h2>
+                </div>
+                <span class="tag">Saved model threshold</span>
+              </div>
+              <p class="muted">
+                Score agreement between named replicate groups within each cell
+                line. Technical runs are averaged within a replicate before
+                comparison.
+              </p>
+              <div id="agreement" class="table-wrap"></div>
+              <p class="footnote">
+                Spearman correlation describes agreement in score ranking (−1 to
+                1). Shared sequence features can also drive agreement; this is
+                not independent biological validation.
+              </p>
+            </article>
+            </div>
+          </section>
+
+          <section id="page-compare" class="page" hidden>
+            <div class="comparison-controls">
+              <label>Cell line A<select id="cell-a"></select></label
+              ><button
+                id="swap-cells"
+                class="swap"
+                aria-label="Swap cell lines"
+              >
+                ⇄</button
+              ><label>Cell line B<select id="cell-b"></select></label>
+              <div class="compare-rule">
+                <strong>Matched sites. Supported comparisons.</strong
+                ><span
+                  >At least 2 qualifying replicate groups per cell line.<br />Fixed
+                  H04 threshold: <b class="saved-threshold"></b>.</span
+                >
+              </div>
+            </div>
+            <div id="compare-message" role="status"></div>
+            <div id="compare-content">
+              <div id="compare-stats" class="stats"></div>
+              <div class="grid compare-grid">
+                <article class="card">
+                  <div class="card-head">
+                    <div>
+                      <div class="eyebrow">SCORE COMPARISON</div>
+                      <h2 id="scatter-heading">
+                        The same site, two cell lines
+                      </h2>
+                    </div>
+                    <span class="tag">Hover to inspect · click to explore</span>
+                  </div>
+                  <div class="canvas-wrap">
+                    <canvas
+                      id="scatter"
+                      height="410"
+                      role="img"
+                      aria-label="Scatter plot of model scores for matched sites in two cell lines. Use the candidate table below for keyboard-accessible site exploration."
+                    ></canvas>
+                    <div id="scatter-tooltip" class="tooltip" hidden></div>
+                  </div>
+                  <p id="scatter-caption" class="footnote"></p>
+                </article>
+                <article class="card">
+                  <div class="eyebrow">READ THE COMPARISON</div>
+                  <h2>What do these patterns mean?</h2>
+                  <div id="pair-explanation"></div>
+                  <div class="interpretation">
+                    Farther from the diagonal means a larger score difference.
+                    Dashed lines mark the prediction threshold.
+                  </div>
+                  <p class="footnote">
+                    The plot shows mean replicate scores. A higher score
+                    indicates stronger model evidence for modification, not a
+                    larger measured fraction of modified RNA.
+                  </p>
+                </article>
+              </div>
+              <article class="card">
+                <div class="card-head">
+                  <div>
+                    <div class="eyebrow">FOLLOW-UP CANDIDATES</div>
+                    <h2>Sites with consistent differences</h2>
+                  </div>
+                  <button id="download-candidates" class="button secondary">
+                    Download filtered CSV ↓
+                  </button>
+                </div>
+                <p class="muted">
+                  All observed qualifying replicates are above the threshold in
+                  one cell line and below it in the other. These are exploratory
+                  candidates; no statistical significance is claimed.
+                </p>
+                <div class="table-controls">
+                  <label class="grow"
+                    >Find a transcript<input
+                      id="candidate-search"
+                      placeholder="e.g. ENST00000451270"
+                      type="search" /></label
+                  ><label
+                    >Higher score in<select id="candidate-direction">
+                      <option value="all">Either cell line</option>
+                      <option value="a">Cell line A</option>
+                      <option value="b">Cell line B</option>
+                    </select></label
+                  ><label
+                    >Sort by<select id="candidate-sort">
+                      <option value="difference">
+                        Largest score difference
+                      </option>
+                      <option value="position">Transcript position</option>
+                      <option value="transcript">Transcript ID</option>
+                    </select></label
+                  >
+                </div>
+                <div id="candidate-table" class="table-wrap"></div>
+                <div class="pagination">
+                  <span id="candidate-count"></span>
+                  <div>
+                    <button id="candidate-prev" class="button secondary">
+                      ← Previous</button
+                    ><span id="candidate-page"></span
+                    ><button id="candidate-next" class="button secondary">
+                      Next →
+                    </button>
+                  </div>
+                </div>
+                <p id="candidate-limit" class="footnote"></p>
+              </article>
+            </div>
+          </section>
+
+          <section id="page-transcript" class="page" hidden>
+            <article class="card search-card">
+              <form id="transcript-form">
+                <label for="transcript-id"
+                  >Search an Ensembl transcript ID</label
+                >
+                <div class="search-line">
+                  <input
+                    id="transcript-id"
+                    list="transcript-suggestions"
+                    placeholder="e.g. ENST00000451270"
+                    autocomplete="off"
+                    spellcheck="false"
+                    required
+                  /><datalist id="transcript-suggestions"></datalist
+                  ><button class="button primary" type="submit">
+                    Explore transcript →
+                  </button>
+                </div>
+              </form>
+              <div class="examples">
+                Try a candidate:
+                <button class="text-button" data-transcript="ENST00000451270">
+                  ENST00000451270</button
+                ><button class="text-button" data-transcript="ENST00000565644">
+                  ENST00000565644
+                </button>
+              </div>
+              <p class="footnote">
+                Search by transcript ID, including known versioned IDs. Gene
+                symbols are not mapped in this dataset.
+              </p>
+            </article>
+            <div id="transcript-message" role="status"></div>
+            <div id="transcript-content" hidden>
+              <div id="transcript-stats" class="stats"></div>
+              <article class="card">
+                <div class="card-head">
+                  <div>
+                    <div class="eyebrow">SITE-BY-SITE EVIDENCE</div>
+                    <h2 id="transcript-heading"></h2>
+                  </div>
+                  <button id="download-transcript" class="button secondary">
+                    Download run-level CSV ↓
+                  </button>
+                </div>
+                <p class="muted">
+                  Rows are sequencing runs; columns are observed transcript
+                  positions. Select a position to see its individual scores and
+                  replicate support.
+                </p>
+                <div class="inline-control">
+                  <label for="transcript-cell">Show runs from</label
+                  ><select id="transcript-cell">
+                    <option value="all">All cell lines</option></select
+                  ><span class="score-legend"
+                    ><i></i> Score 0 → 1
+                    <span class="missing-key">—</span> Missing / below
+                    coverage</span
+                  >
+                </div>
+                <div
+                  id="transcript-heatmap"
+                  class="table-wrap transcript-heatmap"
+                ></div>
+                <div class="pagination">
+                  <span id="position-count"></span>
+                  <div>
+                    <button id="position-prev" class="button secondary">
+                      ← Positions</button
+                    ><button id="position-next" class="button secondary">
+                      Positions →
+                    </button>
+                  </div>
+                </div>
+                <p class="footnote">
+                  Positions are transcript coordinates, not genomic coordinates.
+                  Only observations meeting your selected read support are shown.
+                  Missing cells are never counted as negative predictions.
+                </p>
+              </article>
+              <article class="card">
+                <div class="card-head">
+                  <div>
+                    <div class="eyebrow">SELECTED POSITION</div>
+                    <h2 id="position-heading"></h2>
+                  </div>
+                  <span class="tag"
+                    >Threshold <span class="saved-threshold"></span
+                  ></span>
+                </div>
+                <div id="position-summary"></div>
+                <div id="position-table" class="table-wrap"></div>
+                <p class="footnote">
+                  Cell-line means weight replicate groups equally after
+                  averaging their qualifying technical runs. One qualifying
+                  replicate provides limited support and is excluded from
+                  pairwise comparisons.
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <section id="page-methods" class="page" hidden>
+            <div class="guide-intro card">
+              <div class="eyebrow">START HERE</div>
+              <h2>Predictions you can inspect, with context you can see.</h2>
+              <p>
+                m6A is an RNA modification. H04 uses sequence and nanopore
+                signal features to score potential modification sites. This
+                explorer helps you compare those predictions and identify
+                candidates for follow-up.
+              </p>
+              <div class="guide-steps">
+                <div>
+                  <b>01</b>
+                  <h3>Survey the study</h3>
+                  <p>
+                    Check read support and run-to-run variation in the overview.
+                  </p>
+                </div>
+                <div>
+                  <b>02</b>
+                  <h3>Compare matched sites</h3>
+                  <p>
+                    Choose two cell lines and inspect sites with consistent
+                    replicate differences.
+                  </p>
+                </div>
+                <div>
+                  <b>03</b>
+                  <h3>Look at the evidence</h3>
+                  <p>
+                    Open a transcript to see the scores and coverage behind a
+                    candidate.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="grid guide-grid">
+              <article class="card">
+                <h2>The vocabulary</h2>
+                <dl>
+                  <dt>Site</dt>
+                  <dd>
+                    A transcript ID, position and surrounding seven-base
+                    sequence. A site may be observed in several runs.
+                  </dd>
+                  <dt>Read support / coverage</dt>
+                  <dd>
+                    The number of reads covering a site in one run. Filtering is
+                    applied before aggregation.
+                  </dd>
+                  <dt>Model score</dt>
+                  <dd>
+                    A value from 0 to 1. Higher values indicate stronger model
+                    evidence for m6A. Scores are not guaranteed calibrated
+                    probabilities or measured modification fractions.
+                  </dd>
+                  <dt>Predicted positive</dt>
+                  <dd>
+                    A score at or above the selected threshold. The saved H04
+                    threshold is <span class="saved-threshold"></span>.
+                  </dd>
+                  <dt>Shared positive overlap</dt>
+                  <dd>
+                    Jaccard similarity: positive in both cell lines divided by
+                    positive in either, considering only shared eligible sites.
+                    Empty positive unions are undefined.
+                  </dd>
+                  <dt>Consistent candidate</dt>
+                  <dd>
+                    All observed qualifying replicate scores are positive in one
+                    cell line and negative in the other, with at least two
+                    replicate groups in each.
+                  </dd>
+                </dl>
+              </article>
+              <article class="card">
+                <h2>How comparisons are made</h2>
+                <ol class="method-list">
+                  <li>
+                    Filter each run to sites with at least the selected number
+                    of reads.
+                  </li>
+                  <li>
+                    Average qualifying technical-run scores within each named
+                    replicate group.
+                  </li>
+                  <li>
+                    Average those replicate scores with equal weight for each
+                    cell line.
+                  </li>
+                  <li>
+                    Require at least two qualifying replicates per cell line.
+                    Match transcript ID, position and sequence across the two
+                    groups.
+                  </li>
+                  <li>
+                    Compare scores and positive calls using the saved H04
+                    threshold. Missing sites are excluded.
+                  </li>
+                </ol>
+                <div class="interpretation">
+                  The overview threshold changes run-level summaries only.
+                  Comparisons and transcript calls always use the saved model
+                  threshold.
+                </div>
+                <p>
+                  Versioned Ensembl IDs are harmonised only where at most one
+                  explicit version is observed. Original IDs are retained in
+                  transcript downloads. Known conflicting versions are kept
+                  separate.
+                </p>
+              </article>
+            </div>
+            <article class="card">
+              <h2>Study scope and interpretation</h2>
+              <div id="scope-details"></div>
+              <p>
+                These are descriptive model predictions. Expression, read depth,
+                batch effects and shared sequence features can influence the
+                patterns. Candidate differences have no p-values or
+                multiple-testing correction. Confirm the experimental
+                independence of named replicate groups before formal statistical
+                testing.
+              </p>
+              <p>
+                The model’s training metadata does not resolve potential overlap
+                with SG-NEx samples. This application is not an independent
+                accuracy benchmark. Transcript isoforms may also represent the
+                same genomic nucleotide.
+              </p>
+              <p>
+                Scatter plots show at most 2,000 sampled sites per comparison.
+                Candidate lists contain at most 500 sites ranked by absolute
+                score difference. Summary statistics use the complete eligible
+                comparison. Transcript lookup retains every exported run–site
+                observation at ≥10 reads.
+              </p>
+              <div class="method-links">
+                <a
+                  class="button secondary"
+                  href="report/task2_results.html"
+                  target="_blank"
+                  >Open results report ↗</a
+                ><a
+                  class="button secondary"
+                  href="https://github.com/GoekeLab/sg-nex-data/blob/master/docs/AWS_data_access_tutorial.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  >Data source & access ↗</a
+                ><button id="download-provenance" class="button secondary">
+                  Download study metadata ↓
+                </button>
+              </div>
+              <details>
+                <summary>Model and data provenance</summary>
+                <pre id="provenance"></pre>
+              </details>
+            </article>
+          </section>
+        </div>
+        <footer>
+          <span
+            >SG-NEx Atlas <span class="footer-dot">·</span> Exploratory m6A
+            predictions</span
+          ><a href="#methods">Methods & interpretation ↗</a>
+        </footer>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <noscript
+      >This explorer needs JavaScript to load and filter the result
+      data.</noscript
+    >
+  </body>
+</html>

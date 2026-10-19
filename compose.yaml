@@ -1,0 +1,41 @@
+name: sgnex-atlas
+services:
+  dashboard:
+    build:
+      context: .
+      target: dashboard
+    ports:
+      - "127.0.0.1:${PORT:-8080}:8080"
+    restart: unless-stopped
+    depends_on:
+      queries:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+  queries:
+    build:
+      context: .
+      target: queries
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+  analysis:
+    profiles: [analysis]
+    build:
+      context: .
+      target: analysis
+    volumes:
+      - ./data:/work/data
+      - ./outputs:/work/outputs
+      - ./task2_site/dist/data:/work/task2_site/dist/data
+      - ./task2_site/query_data:/work/task2_site/query_data
+      - ./task2_site/dist/report:/work/task2_site/dist/report
+    environment:
+      OMP_NUM_THREADS: "4"
+      OPENBLAS_NUM_THREADS: "4"
+    command: ["-m", "scripts.task2_pipeline", "--help"]

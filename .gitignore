@@ -1,7 +1,11 @@
-# Full datasets
-/.venv
-/data
-/outputs
+# Local datasets and generated analysis outputs (share separately from Git)
+/data/
+/outputs/
+
+# Generated dashboard data; keep the website code and report in Git
+/task2_site/dist/data/
+/task2_site/query_data/
+/task2-data*.tar.gz
 
 # Python and notebooks
 .venv/

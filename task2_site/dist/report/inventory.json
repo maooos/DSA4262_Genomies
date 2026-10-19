@@ -1,0 +1,18 @@
+{
+  "created_at": "2026-10-12T12:08:54.637103+00:00",
+  "bucket": "https://sg-nex-data.s3.ap-southeast-1.amazonaws.com",
+  "prefix": "data/processed_data/m6Anet/",
+  "metadata_url": "https://raw.githubusercontent.com/GoekeLab/sg-nex-data/master/docs/samples.tsv",
+  "processed_samples": 23,
+  "cell_lines": [
+    "A549",
+    "H9",
+    "HEYA8",
+    "Hct116",
+    "HepG2",
+    "K562",
+    "MCF7"
+  ],
+  "size_bytes": 33365823342,
+  "directRNA_samples_without_processed_json": 33
+}

@@ -68,18 +68,30 @@ def _read_batches(path, batch_size):
         return
     if not path.name.lower().endswith((".json", ".jsonl", ".json.gz", ".jsonl.gz")):
         raise ValueError("Read input must be project JSON/JSONL (optionally gzip) or reads Parquet.")
-    pieces, count = [], 0
+    values_by_site, transcripts, positions, sequences, counts = [], [], [], [], []
+
+    def assemble():
+        frame = pd.DataFrame(np.concatenate(values_by_site), columns=RAW_FEATURE_NAMES)
+        frame[KEYS[0]] = np.repeat(transcripts, counts)
+        frame[KEYS[1]] = np.repeat(positions, counts)
+        frame["sequence"] = np.repeat(sequences, counts)
+        frame["n_reads"] = np.repeat(counts, counts)
+        return frame
+
+    count = 0
     for transcript, position, sequence, values in iter_sites(path):
-        frame = pd.DataFrame(values, columns=RAW_FEATURE_NAMES)
-        frame[KEYS[0]], frame[KEYS[1]] = transcript, position
-        frame["sequence"], frame["n_reads"] = sequence, len(values)
-        pieces.append(frame)
-        count += len(frame)
+        values_by_site.append(values)
+        transcripts.append(transcript)
+        positions.append(position)
+        sequences.append(sequence)
+        counts.append(len(values))
+        count += len(values)
         if count >= batch_size:
-            yield pd.concat(pieces, ignore_index=True)
-            pieces, count = [], 0
-    if pieces:
-        yield pd.concat(pieces, ignore_index=True)
+            yield assemble()
+            values_by_site, transcripts, positions, sequences, counts = [], [], [], [], []
+            count = 0
+    if values_by_site:
+        yield assemble()
 
 
 def features_from_reads(reads):
@@ -104,10 +116,14 @@ def features_from_reads(reads):
     return engineered.join(raw_means).reset_index()
 
 
-def _feature_batches(path, input_kind, batch_size):
+def _feature_batches(path, input_kind, batch_size, include_site_metadata=False):
     if input_kind == "reads":
         for reads in _read_batches(path, batch_size):
-            yield features_from_reads(reads)
+            frame = features_from_reads(reads)
+            if include_site_metadata:
+                sequence = reads.groupby(KEYS, sort=False)["sequence"].first().reset_index()
+                frame = frame.merge(sequence, on=KEYS, validate="one_to_one", sort=False)
+            yield frame
     elif input_kind == "features":
         if path.suffix.lower() == ".parquet":
             frame = pd.read_parquet(path)
@@ -124,7 +140,7 @@ def _feature_batches(path, input_kind, batch_size):
 
 
 def predict_to_csv(model_path, input_path, output_path, *, input_kind="features",
-                   batch_size=200_000, threads=4):
+                   batch_size=200_000, threads=4, include_site_metadata=False):
     """Write a score and thresholded prediction per site, plus input metadata.
 
     Prediction 1 means score >= the model's saved validation threshold.
@@ -170,7 +186,7 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
     output_keys = None
     try:
         with temporary.open("x", encoding="utf-8", newline="") as handle:
-            for frame in _feature_batches(input_path, input_kind, batch_size):
+            for frame in _feature_batches(input_path, input_kind, batch_size, include_site_metadata):
                 if frame.empty:
                     continue
                 _validate_keys(frame)
@@ -195,6 +211,11 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
                 if scores.shape != (len(frame),) or not np.isfinite(scores).all() or ((scores < 0) | (scores > 1)).any():
                     raise ValueError("Model returned invalid scores; expected one value in [0, 1] per site.")
                 result = frame[output_keys].copy()
+                if include_site_metadata:
+                    for name in ("sequence", "n_reads"):
+                        if name not in frame:
+                            raise ValueError(f"Site metadata requires {name} in the input.")
+                        result[name] = frame[name]
                 result["score"] = scores
                 result["prediction"] = (scores >= threshold).astype(np.int8)
                 result.to_csv(handle, index=False, header=count == 0)
@@ -218,7 +239,7 @@ def predict_to_csv(model_path, input_path, output_path, *, input_kind="features"
             "output_path": str(output_path), "site_count": count,
             "feature_columns": columns,
             "identifier_columns": output_keys,
-            "output_columns": [*output_keys, "score", "prediction"],
+            "output_columns": list(result.columns),
         }
         temporary_metadata.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         temporary_metadata.rename(metadata_path)
