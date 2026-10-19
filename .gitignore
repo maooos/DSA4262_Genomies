@@ -7,11 +7,32 @@
 /task2_site/query_data/
 /task2-data*.tar.gz
 
+# Packaged dashboard copies
+/task2_site*.zip
+
+# Operating-system metadata
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
 # Python and notebooks
 .venv/
 __pycache__/
 *.pyc
+*.pyo
 .ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Credentials
 .env
+.env.*
+!.env.example
+
+# Local AWS credentials/configuration
+.aws/

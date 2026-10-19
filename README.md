@@ -83,6 +83,10 @@ service automatically.
 
 ## What you can do on the website
 
+New to the application? Read the [first-time user guide](docs/USER_GUIDE.md) for a
+five-minute tour, explanations of every page and control, and help interpreting
+and sharing your results.
+
 | Page or control | Use it to… |
 | --- | --- |
 | Study overview | See per-run predictions, cell-line overlap and replicate agreement. |
