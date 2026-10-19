@@ -1,5 +1,8 @@
 # H04 inference
 
+For manifest-based SG-NEx batch prediction, resumable outputs, submission export,
+and Ronin setup, see [the pipeline guide](docs/ronin_pipeline.md).
+
 Score RNA sites and predict binary labels with the saved pooled H04 model. This repository contains the
 trained model and inference code. The notebook currently targets the local
 `data/raw/data0/dataset0.json.gz` input. Training workflows, EDA notebooks, and
@@ -123,3 +126,13 @@ saved internal-test scores within `1e-12` tolerance. The included six raw data0
 sites also reproduced their scores from the original saved features. The
 regression test retains this small check without requiring the training data;
 the example is not a new evaluation set.
+
+## SG-NEx analysis
+
+Use `scripts/analyze_sgnex.py` after all manifest samples have checksum-verified `complete.json` records:
+
+```bash
+.venv/bin/python scripts/analyze_sgnex.py
+```
+
+The analysis applies the saved H04 threshold consistently, reports coverage cutoffs of 20 and 50 reads, checks replicate agreement, and compares cell lines on sites supported by at least two named replicates. Technical runs sharing a replicate ID are averaged first. Sites without enough coverage remain unevaluable. Outputs and interpretation limits are documented in `outputs/sgnex_analysis_20261019/analysis_provenance.json` and the generated summary tables. The scores are not calibrated modification fractions, and SG-NEx has no independent labels here for ROC-AUC or accuracy evaluation.
