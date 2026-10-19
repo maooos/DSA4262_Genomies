@@ -102,9 +102,10 @@ Run these from the project folder:
 ```bash
 docker compose up -d                      # Start again after the first build
 docker compose down                       # Stop the website
+docker compose up -d                      # Restart after a crash or computer sleep
 docker compose ps                         # Check whether services are healthy
 docker compose logs dashboard queries     # Read startup or calculation errors
-docker compose up --build -d               # Rebuild after code or data changes
+docker compose up --build -d              # Rebuild after code or data changes
 ```
 
 | Problem | What to check |
