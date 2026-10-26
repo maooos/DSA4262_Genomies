@@ -1347,3 +1347,60 @@ footer a {
       box-shadow 0.15s ease;
   }
 }
+
+
+
+/* Transcript explorer: tracks, heatmap headings and multiselect. */
+/* Scoped additions; existing dashboard layouts and plots retain their styles. */
+.transcript-heatmap-heading { margin: 24px 0 14px; }
+.transcript-heatmap-heading h3 { margin: 0 0 6px; font-size: 15px; color: var(--ink); }
+.transcript-heatmap-heading p { margin: 0; }
+.transcript-tracks { margin: 24px 0 28px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0; min-width: 0; }
+.track-disclosure { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0; list-style: none; }
+.track-disclosure::-webkit-details-marker { display: none; }
+.track-disclosure strong { display: block; color: var(--ink); font-size: 14px; }
+.track-disclosure small { display: block; color: var(--muted); font-size: 11px; margin-top: 4px; }
+.track-toggle-label { flex-shrink: 0; border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; color: var(--green); font-size: 11px; background: white; }
+.track-disclosure:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.track-body { padding: 0 0 14px; }
+.transcript-tracks > .track-heading { padding-top: 18px; }
+.track-run-disclosure { margin-top: 12px; padding-top: 0; padding-bottom: 6px; }
+.track-run-body { padding: 0 0 8px; }
+.track-threshold-legend { display: flex; align-items: center; gap: 9px; margin: 0 0 14px; color: var(--muted); font-size: 11px; }
+.track-threshold-swatch { flex: 0 0 32px; border-top: 2px dashed #b87538; }
+@media (max-width: 500px) { .track-disclosure { align-items: flex-start; gap: 10px; } .track-disclosure strong { font-size: 13px; } .track-toggle-label { padding: 6px 8px; font-size: 10px; } }
+.track-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.track-heading h3 { margin: 0; font-size: 15px; }
+.track-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 12px; }
+.track-toolbar .button, .track-range-form .button { font-size: 11px; padding: 8px 12px; }
+.track-range-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 12px 0; }
+.track-range-form label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--muted); }
+.track-range-form input { width: 145px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; background: white; padding: 7px 10px; color: var(--ink); }
+.track-range-form input[aria-invalid="true"] { border-color: #a34525; }
+.track-window-status,
+.track-overview-summary { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--green); }
+.track-overview { display: block; width: 100%; height: 80px; cursor: pointer; margin-bottom: 8px; }
+.track-canvas-wrap { position: relative; width: 100%; }
+#transcript-tracks-canvas { display: block; width: 100%; touch-action: pan-y; cursor: grab; border-radius: 5px; }
+#transcript-tracks-canvas:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
+.track-tooltip { position: absolute; z-index: 3; pointer-events: none; white-space: pre-line; max-width: min(250px, 100%); padding: 10px 12px; background: var(--dark); color: white; border-radius: 8px; font-size: 10px; box-shadow: 0 3px 16px #0002; }
+.transcript-heatmap .position-head.selected { background: var(--lime); color: var(--dark); outline: 2px solid var(--green); outline-offset: -2px; }
+.transcript-cell-filter { position: relative; padding: 0; border: 0; min-width: 165px; max-width: 100%; }
+.transcript-cell-filter > summary { list-style: none; padding: 7px 28px 7px 11px; border: 1px solid var(--line); border-radius: 6px; background: white; font-size: 11px; max-width: 340px; overflow-wrap: anywhere; }
+.transcript-cell-filter > summary::-webkit-details-marker { display: none; }
+.transcript-cell-filter > summary::after { content: '▾'; position: absolute; right: 10px; top: 7px; }
+.transcript-cell-options { position: absolute; z-index: 5; top: calc(100% + 5px); left: 0; min-width: 200px; max-height: 280px; overflow-y: auto; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: white; box-shadow: 0 5px 20px #0002; }
+.transcript-cell-options .transcript-cell-option { display: flex; align-items: center; gap: 9px; padding: 7px; margin: 0; font-size: 12px; cursor: pointer; }
+.transcript-cell-option input { accent-color: var(--green); }
+.transcript-cell-option:first-child { border-bottom: 1px solid var(--line); font-weight: 600; }
+@media (max-width: 700px) {
+  .track-heading .tag { white-space: normal; }
+  .track-range-form label { flex: 1 1 110px; min-width: 0; }
+  .track-range-form input { width: 100%; }
+  .track-toolbar .button { flex: 1 1 auto; }
+}
+
+/* Overview selection stays visible; track-window navigation is optional. */
+.track-overview { touch-action: pan-y; }
+.track-overview:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.track-overview-summary { margin: 12px 0 6px; }

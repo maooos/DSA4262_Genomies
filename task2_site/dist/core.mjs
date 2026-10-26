@@ -68,9 +68,10 @@ export function filterCandidates(
     );
 }
 export function transcriptRows(rows, samples, coverage, cell = "all") {
+  const selected = new Set(Array.isArray(cell) ? cell : [cell]);
   return rows.filter(
     (r) =>
-      r[3] >= coverage && (cell === "all" || samples[r[0]].cell_line === cell),
+      r[3] >= coverage && (cell === "all" || selected.has(samples[r[0]].cell_line)),
   );
 }
 export function positionGroups(rows, samples, position, threshold) {
@@ -114,4 +115,46 @@ export function csvText(rows, columns) {
     columns.map(quote).join(","),
     ...rows.map((r) => columns.map((c) => quote(r[c])).join(",")),
   ].join("\r\n");
+}
+
+
+
+// Transcript-track coordinate and navigation helpers.
+// Coordinate math shared by the transcript browser and its tests.
+export function observedExtent(rows) {
+  if (!rows.length) return null;
+  let min = Infinity, max = -Infinity;
+  for (const row of rows) { min = Math.min(min, row[1]); max = Math.max(max, row[1]); }
+  return [min, max === min ? min + 1 : max];
+}
+
+export function clampWindow(start, end, domain) {
+  const span = Math.min(domain[1] - domain[0], Math.max(1, Math.round(end - start)));
+  const first = Math.max(domain[0], Math.min(domain[1] - span, Math.round(start)));
+  return [first, first + span];
+}
+
+export function zoomWindow(window, factor, domain, anchor = (window[0] + window[1]) / 2) {
+  const fraction = (anchor - window[0]) / (window[1] - window[0]);
+  const span = (window[1] - window[0]) / factor;
+  return clampWindow(anchor - span * fraction, anchor + span * (1 - fraction), domain);
+}
+
+export function panWindow(window, fraction, domain) {
+  const offset = (window[1] - window[0]) * fraction;
+  return clampWindow(window[0] + offset, window[1] + offset, domain);
+}
+
+export function nearestRow(rows, position, tolerance = Infinity) {
+  // rows must be sorted by coordinate. Resolve ties to the lower position.
+  let lo = 0, hi = rows.length;
+  while (lo < hi) { const mid = (lo + hi) >>> 1; if (rows[mid][1] < position) lo = mid + 1; else hi = mid; }
+  let best = rows[lo - 1] || rows[lo];
+  if (rows[lo] && (!best || Math.abs(rows[lo][1] - position) < Math.abs(best[1] - position))) best = rows[lo];
+  return best && Math.abs(best[1] - position) <= tolerance ? best : null;
+}
+
+export function pageForPosition(positions, position, pageSize = 24) {
+  const index = positions.indexOf(position);
+  return index < 0 ? 0 : Math.floor(index / pageSize);
 }

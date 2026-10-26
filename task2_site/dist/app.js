@@ -1,4 +1,10 @@
 import {
+  observedExtent,
+  clampWindow,
+  zoomWindow,
+  panWindow,
+  nearestRow,
+  pageForPosition,
   parseReadSupport,
   mean,
   finite,
@@ -9,8 +15,9 @@ import {
   transcriptRows,
   positionGroups,
   csvText,
-} from "./core.mjs";
+} from "./core.mjs?v=dashboard-overview-4";
 const $ = (id) => document.getElementById(id);
+let transcriptTracks;
 const fmt = (n) => (finite(n) ? n.toLocaleString("en-US") : "—");
 const dec = (n, d = 3) => (finite(n) ? n.toFixed(d) : "—");
 const pct = (n) => (finite(n) ? (n * 100).toFixed(2) + "%" : "—");
@@ -559,8 +566,27 @@ function currentTranscriptRows() {
     transcript.rows,
     study.samples,
     state.coverage,
-    $("transcript-cell").value,
+    selectedTranscriptCells(),
   );
+}
+function selectedTranscriptCells() {
+  return [...document.querySelectorAll(".transcript-cell-choice:checked")].map((input) => input.value);
+}
+function syncTranscriptCellFilter() {
+  const selected = selectedTranscriptCells();
+  const all = $("transcript-cell-all");
+  all.checked = selected.length === study.cell_lines.length;
+  all.indeterminate = selected.length > 0 && !all.checked;
+  $("transcript-cell-summary").textContent = all.checked ? "All cell lines" : selected.length ? selected.join(", ") : "No cell lines selected";
+  $("transcript-cell-summary").setAttribute("aria-label", `Choose cell lines to show: ${$("transcript-cell-summary").textContent}`);
+}
+function selectTranscriptPosition(position) {
+  if (!transcript) return;
+  const positions = [...new Set(currentTranscriptRows().map((r) => r[1]))].sort((a, b) => a - b);
+  if (!positions.includes(position)) return;
+  state.position = position;
+  positionPage = pageForPosition(positions, position);
+  renderTranscript();
 }
 function renderTranscript() {
   if (!transcript) return;
@@ -599,12 +625,11 @@ function renderTranscript() {
     .map((s, i) => ({ s, i }))
     .filter(
       ({ s }) =>
-        $("transcript-cell").value === "all" ||
-        s.cell_line === $("transcript-cell").value,
+        selectedTranscriptCells().includes(s.cell_line),
     );
   const map = new Map(rows.map((r) => [`${r[0]}|${r[1]}`, r]));
   $("transcript-heatmap").innerHTML = positions.length
-    ? `<table><thead><tr><th scope="col">Cell line · replicate / run</th>${displayed.map((p) => `<th scope="col"><button class="position-head" data-select-position="${p}" aria-label="Inspect position ${p}">${p}</button></th>`).join("")}</tr></thead><tbody>${sampleIds
+    ? `<table><thead><tr><th scope="col">Cell line · replicate / run</th>${displayed.map((p) => `<th scope="col"><button class="position-head ${p === state.position ? "selected" : ""}" data-select-position="${p}" aria-pressed="${p === state.position}" aria-label="Inspect position ${p}">${p}</button></th>`).join("")}</tr></thead><tbody>${sampleIds
         .map(
           ({ s, i }) =>
             `<tr><td>${esc(s.cell_line)} <span class="muted">· ${s.replicate} / ${s.run}</span></td>${displayed
@@ -625,6 +650,19 @@ function renderTranscript() {
   $("position-next").disabled = positionPage >= pages - 1;
   $("download-transcript").disabled = !rows.length;
   renderPosition(rows);
+  try {
+    transcriptTracks.update({
+      id: transcript.id, rows, allRows: transcript.rows, samples: study.samples,
+      cells: selectedTranscriptCells(), position: state.position,
+      threshold: study.threshold, coverage: state.coverage,
+    });
+    $("track-load-message").hidden = true;
+  } catch (error) {
+    console.error("Transcript track rendering failed:", error);
+    $("track-load-message").hidden = false;
+    $("track-load-message").className = "error";
+    $("track-load-message").textContent = `Transcript tracks could not be drawn: ${error.message}. The heatmap and table are still available. Rebuild the dashboard and hard-refresh to check for mismatched files.`;
+  }
 }
 function renderPosition(rows = currentTranscriptRows()) {
   const pos = state.position;
@@ -666,6 +704,7 @@ function renderMethods() {
   );
 }
 function wire() {
+  transcriptTracks = new TranscriptTracks(selectTranscriptPosition);
   window.addEventListener("hashchange", route);
   const applyCoverage = (coverage) => {
     state.coverage = coverage;
@@ -712,9 +751,11 @@ function wire() {
     $("candidate-search").value = "";
     $("candidate-direction").value = "all";
     $("candidate-sort").value = "difference";
-    $("transcript-cell").value = "all";
+    document.querySelectorAll(".transcript-cell-choice").forEach((input) => { input.checked = true; });
+    syncTranscriptCellFilter();
     $("transcript-id").value = "";
     transcript = null;
+    transcriptTracks.id = null;
     $("transcript-content").hidden = true;
     message("transcript-message", "");
     setURL();
@@ -747,16 +788,9 @@ function wire() {
       location.hash = `compare?a=${p.dataset.pairA}&b=${p.dataset.pairB}&reads=${state.coverage}`;
     const pos = e.target.closest("[data-select-position]");
     if (pos) {
-      state.position = Number(pos.dataset.selectPosition);
-      document
-        .querySelectorAll(".site-cell")
-        .forEach((b) =>
-          b.classList.toggle(
-            "selected",
-            Number(b.dataset.selectPosition) === state.position,
-          ),
-        );
-      renderPosition();
+      selectTranscriptPosition(Number(pos.dataset.selectPosition));
+      if (e.detail === 0)
+        $("transcript-heatmap").querySelector(`.position-head[data-select-position="${state.position}"]`)?.focus({ preventScroll: true });
     }
   });
   for (const id of [
@@ -805,11 +839,23 @@ function wire() {
             .join("")
         : "";
   });
-  $("transcript-cell").onchange = () => {
+  $("transcript-cell").onchange = (event) => {
+    if (event.target.id === "transcript-cell-all")
+      document.querySelectorAll(".transcript-cell-choice").forEach((input) => { input.checked = event.target.checked; });
+    syncTranscriptCellFilter();
     positionPage = 0;
     state.position = null;
     renderTranscript();
   };
+  document.addEventListener("click", (event) => {
+    if (!$("transcript-cell-filter").contains(event.target)) $("transcript-cell-filter").open = false;
+  });
+  $("transcript-cell-filter").addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      $("transcript-cell-filter").open = false;
+      $("transcript-cell-summary").focus();
+    }
+  });
   $("download-overview").onclick = () =>
     csv(
       `sgnex-runs-min${state.coverage}-threshold${dec(state.threshold, 4)}.csv`,
@@ -888,7 +934,9 @@ async function start() {
     $("cell-a").innerHTML = options(study.cell_lines);
     $("cell-b").innerHTML = options(study.cell_lines);
     $("transcript-cell").innerHTML =
-      '<option value="all">All cell lines</option>' + options(study.cell_lines);
+      '<label class="transcript-cell-option"><input id="transcript-cell-all" type="checkbox" checked> All cell lines</label>' +
+      study.cell_lines.map((cell) => `<label class="transcript-cell-option"><input class="transcript-cell-choice" type="checkbox" value="${esc(cell)}" checked> ${esc(cell)}</label>`).join("");
+    syncTranscriptCellFilter();
     $("overview-threshold").innerHTML = [0.15, study.threshold, 0.3, 0.5]
       .map(
         (t) =>
@@ -910,4 +958,335 @@ async function start() {
       `${e.message} Serve this folder through Docker or a local HTTP server, and ensure the bundled data directory is present.`;
   }
 }
+
+// Transcript explorer: zoomable run-level score and read-support tracks.
+const transcriptTrackColours = ['#17634e','#466fa1','#b87538','#806394','#9b5570','#427d80','#788547'];
+
+class TranscriptTracks {
+  constructor(onSelect) {
+    this.onSelect = onSelect;
+    this.id = null; this.domain = null; this.window = null;
+    this.rows = []; this.runs = []; this.position = null; this.drag = null;
+    this.canvas = $('transcript-tracks-canvas');
+    this.overview = $('transcript-tracks-overview');
+    this.tip = $('transcript-tracks-tooltip');
+    document.querySelectorAll('[data-track-zoom]').forEach(button => button.addEventListener('click',()=>{
+      if(this.domain) this.setWindow(zoomWindow(this.window,Number(button.dataset.trackZoom),this.domain));
+    }));
+    document.querySelectorAll('[data-track-pan]').forEach(button => button.addEventListener('click',()=>{
+      if(this.domain) this.setWindow(panWindow(this.window,Number(button.dataset.trackPan),this.domain));
+    }));
+    $('track-full-span').addEventListener('click',()=>{if(this.domain) this.setWindow([...this.domain]);});
+    $('track-range-form').addEventListener('submit',event=>{
+      event.preventDefault();
+      const rawStart=$('track-start').value.trim(),rawEnd=$('track-end').value.trim();
+      const start=Number(rawStart),end=Number(rawEnd);
+      const valid=/^\d+$/.test(rawStart)&&/^\d+$/.test(rawEnd)&&Number.isSafeInteger(start)&&Number.isSafeInteger(end)&&start<end;
+      $('track-range-error').hidden=valid;
+      $('track-start').setAttribute('aria-invalid',String(!valid));
+      $('track-end').setAttribute('aria-invalid',String(!valid));
+      if(valid && this.domain) this.setWindow(clampWindow(start,end,this.domain));
+    });
+    this.canvas.addEventListener('pointerdown',event=>{
+      if(!this.window||event.button!==0) return;
+      const p=this.local(event);
+      if(p.x<this.left||p.x>this.width-this.right) return;
+      this.drag={x:p.x,y:p.y,start:[...this.window],moved:false};
+      this.canvas.setPointerCapture(event.pointerId);
+    });
+    this.canvas.addEventListener('pointermove',event=>{
+      if(this.drag){
+        const p=this.local(event),delta=p.x-this.drag.x;
+        if(Math.abs(delta)>5) this.drag.moved=true;
+        if(this.drag.moved){
+          const shift=-delta/this.plotWidth*(this.drag.start[1]-this.drag.start[0]);
+          this.setWindow(clampWindow(this.drag.start[0]+shift,this.drag.start[1]+shift,this.domain),false);
+        }
+        this.hideTip(); return;
+      }
+      this.hover(event);
+    });
+    this.canvas.addEventListener('pointerup',event=>{
+      if(!this.drag) return;
+      const moved=this.drag.moved;this.drag=null;
+      if(this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
+      if(!moved){const row=this.hit(event);if(row) this.onSelect(row[1]);}
+      this.describe();
+    });
+    this.canvas.addEventListener('pointercancel',()=>{this.drag=null;});
+    this.canvas.addEventListener('lostpointercapture',()=>{this.drag=null;});
+    this.canvas.addEventListener('pointerleave',()=>this.hideTip());
+    this.canvas.addEventListener('keydown',event=>{
+      if(!this.rows.length) return;
+      if(event.key==='+'||event.key==='='){event.preventDefault();this.setWindow(zoomWindow(this.window,2,this.domain));return;}
+      if(event.key==='-'){event.preventDefault();this.setWindow(zoomWindow(this.window,.5,this.domain));return;}
+      if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+      event.preventDefault();
+      const positions=this.positions,index=positions.indexOf(this.position);
+      const next=event.key==='Home'?positions[0]:event.key==='End'?positions.at(-1):positions[Math.max(0,Math.min(positions.length-1,index+(event.key==='ArrowLeft'?-1:1)))];
+      this.onSelect(next);
+    });
+    this.canvas.addEventListener('wheel',event=>{
+      if(!event.ctrlKey||!this.window) return;
+      const p=this.local(event);if(p.x<this.left||p.x>this.width-this.right)return;
+      event.preventDefault();
+      const anchor=this.toPosition(p.x);
+      this.setWindow(zoomWindow(this.window,event.deltaY<0?1.5:1/1.5,this.domain,anchor));
+    },{passive:false});
+    this.overview.addEventListener('pointerdown',event=>{
+      if(event.button!==0||!this.domain||!this.positions.length)return;
+      const x=this.overviewX(event);
+      if(x<this.left||x>this.width-this.right)return;
+      this.overviewDrag={x,start:[...this.window],moved:false,canDrag:this.overviewWindowHit(x)};
+      this.overview.setPointerCapture(event.pointerId);
+    });
+    this.overview.addEventListener('pointermove',event=>{
+      const x=this.overviewX(event);
+      if(this.overviewDrag){
+        const delta=x-this.overviewDrag.x;
+        if(Math.abs(delta)>5)this.overviewDrag.moved=true;
+        if(this.overviewDrag.moved&&this.overviewDrag.canDrag){
+          const shift=delta/this.plotWidth*(this.domain[1]-this.domain[0]);
+          this.setWindow(clampWindow(this.overviewDrag.start[0]+shift,this.overviewDrag.start[1]+shift,this.domain));
+          this.overview.style.cursor='grabbing';
+        }
+      } else this.overview.style.cursor=this.overviewWindowHit(x)?'grab':'pointer';
+    });
+    this.overview.addEventListener('pointerup',event=>{
+      if(!this.overviewDrag)return;
+      const moved=this.overviewDrag.moved;this.overviewDrag=null;
+      if(this.overview.hasPointerCapture(event.pointerId))this.overview.releasePointerCapture(event.pointerId);
+      this.overview.style.cursor='pointer';
+      if(!moved){
+        const position=this.domain[0]+(this.overviewX(event)-this.left)/this.plotWidth*(this.domain[1]-this.domain[0]);
+        const row=nearestRow(this.overviewPositions,position);
+        if(row)this.onSelect(row[1]);
+      }
+    });
+    for(const type of ['pointercancel','lostpointercapture'])this.overview.addEventListener(type,()=>{
+      this.overviewDrag=null;this.overview.style.cursor='pointer';
+    });
+    this.overview.addEventListener('keydown',event=>{
+      if(!this.positions.length||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+      event.preventDefault();
+      const index=this.positions.indexOf(this.position);
+      const next=event.key==='Home'?this.positions[0]:event.key==='End'?this.positions.at(-1):this.positions[Math.max(0,Math.min(this.positions.length-1,index+(event.key==='ArrowLeft'?-1:1)))];
+      this.onSelect(next);
+    });
+    $('transcript-run-tracks').addEventListener('toggle',()=>{
+      const open=$('transcript-run-tracks').open;
+      $('track-toggle-label').textContent=open?'Collapse tracks':'Expand tracks';
+      this.overviewDrag=null;this.overview.style.cursor='pointer';
+      this.hideTip();
+        try { this.draw();this.describe(); }
+        catch(error){
+          console.error('Transcript track rendering failed:',error);
+          $('track-load-message').hidden=false;
+          $('track-load-message').className='error';
+          $('track-load-message').textContent=`Transcript tracks could not be drawn: ${error.message}. The heatmap and table are still available.`;
+        }
+    });
+    this.observer=new ResizeObserver(()=>this.draw());
+    this.observer.observe($('transcript-tracks'));
+  }
+
+  update({id,rows,allRows,samples,cells,position,threshold,coverage}) {
+    const changed=this.id!==id;
+    this.id=id;this.rows=rows;this.threshold=threshold;this.coverage=coverage;
+    this.domain=observedExtent(allRows);
+    if(changed||!this.window) this.window=this.domain?[...this.domain]:null;
+    else if(this.domain) this.window=clampWindow(...this.window,this.domain);
+    this.positions=[...new Set(rows.map(r=>r[1]))].sort((a,b)=>a-b);
+    this.overviewPositions=this.positions.map(position=>[null,position]);
+    this.runs=samples.map((sample,index)=>({sample,index,rows:[]})).filter(run=>cells.includes(run.sample.cell_line));
+    const byIndex=new Map(this.runs.map(run=>[run.index,run]));
+    for(const row of rows) byIndex.get(row[0])?.rows.push(row);
+    for(const run of this.runs) run.rows.sort((a,b)=>a[1]-b[1]);
+    const paletteCells=[...new Set(samples.map(s=>s.cell_line))];
+    for(const run of this.runs)run.colour=transcriptTrackColours[paletteCells.indexOf(run.sample.cell_line)%transcriptTrackColours.length];
+    this.maxReads=rows.reduce((max,r)=>Math.max(max,r[3]),1);
+    this.position=position;
+    if(!changed&&$('transcript-run-tracks').open) this.ensureVisible(position);
+    this.hideTip();this.draw();this.describe();
+  }
+
+  setSelection(position) {
+    if(this.position===position)return;
+    this.position=position;this.ensureVisible(position);this.hideTip();this.draw();this.describe();
+  }
+
+  ensureVisible(position) {
+    if(position===null||!this.window||!this.domain)return;
+    if(position<this.window[0]||position>this.window[1]){
+      const half=(this.window[1]-this.window[0])/2;
+      this.window=clampWindow(position-half,position+half,this.domain);
+    }
+  }
+
+  setWindow(window,announce=true) {
+    this.window=window;
+    $('track-range-error').hidden=true;
+    $('track-start').setAttribute('aria-invalid','false');
+    $('track-end').setAttribute('aria-invalid','false');
+    this.hideTip();this.draw();if(announce)this.describe();
+  }
+
+  describe() {
+    if(!this.window)return;
+    $('track-start').value=this.window[0];$('track-end').value=this.window[1];
+    const visible=this.positions.filter(p=>p>=this.window[0]&&p<=this.window[1]).length;
+    $('track-window-status').textContent=`Viewing ${fmt(this.window[0])}–${fmt(this.window[1])} · ${fmt(visible)} eligible positions in view${this.position===null?'':` · selected ${fmt(this.position)}`}`;
+    $('track-overview-summary').textContent=`${fmt(this.positions.length)} eligible positions · selected position: ${this.position===null?'none':fmt(this.position)}`;
+    this.overview.setAttribute('aria-describedby','track-overview-summary track-overview-instruction track-overview-explanation');
+    const atFull=this.window[0]===this.domain[0]&&this.window[1]===this.domain[1];
+    $('track-full-span').disabled=atFull||!this.rows.length;
+    for(const b of document.querySelectorAll('[data-track-zoom]'))b.disabled=!this.rows.length||(Number(b.dataset.trackZoom)>1?this.window[1]-this.window[0]<=1:atFull);
+    for(const b of document.querySelectorAll('[data-track-pan]'))b.disabled=!this.rows.length||(Number(b.dataset.trackPan)<0?this.window[0]===this.domain[0]:this.window[1]===this.domain[1]);
+    for(const el of [$('track-start'),$('track-end'),$('track-range-apply')])el.disabled=!this.rows.length;
+    this.canvas.setAttribute('aria-label',`${this.id}: scores and read support per sequencing run. ${$('track-window-status').textContent}. Arrow keys select sites; plus and minus zoom.`);
+  }
+
+  context(canvas,width,height) {
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);
+    canvas.style.height=`${height}px`;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);return ctx;
+  }
+
+  draw() {
+    if(!this.domain||!this.window)return;
+    this.width=$('transcript-tracks').clientWidth;
+    if(!this.width)return;
+    const header='Cell line · replicate / run';
+    const measure=this.canvas.getContext('2d');measure.font='600 10px system-ui';
+    this.left=Math.ceil(measure.measureText(header).width)+18;
+    this.right=16;this.plotWidth=Math.max(1,this.width-this.left-this.right);
+    this.rowHeight=108;this.top=40;
+    this.drawOverview();
+    if(!$('transcript-run-tracks').open)return;
+    const height=this.top+this.runs.length*this.rowHeight+28;
+    const ctx=this.context(this.canvas,this.width,height);
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,this.width,height);
+    for(let i=0;i<this.runs.length;i++){
+      ctx.fillStyle='#f3f7f2';ctx.fillRect(this.left,this.top+i*this.rowHeight+66,this.plotWidth,34);
+    }
+    ctx.font='10px system-ui';ctx.fillStyle='#66746e';
+    ctx.fillText('Scores 0–1; reads 0–'+fmt(this.maxReads)+' (log scale)',this.left,13);
+    ctx.font='600 10px system-ui';ctx.fillStyle='#20372f';
+    ctx.fillText(header,1,13);
+    ctx.font='10px system-ui';ctx.fillStyle='#66746e';
+    const x=p=>this.left+(p-this.window[0])/(this.window[1]-this.window[0])*this.plotWidth;
+    const ticks=this.width<500?3:5,seenTicks=new Set();
+    for(let i=0;i<=ticks;i++){
+      const position=Math.round(this.window[0]+i/ticks*(this.window[1]-this.window[0]));
+      if(seenTicks.has(position))continue;seenTicks.add(position);
+      ctx.textAlign=i===0?'left':i===ticks?'right':'center';ctx.fillText(fmt(position),x(position),29);
+      ctx.strokeStyle='#edf0e9';ctx.beginPath();ctx.moveTo(x(position),this.top);ctx.lineTo(x(position),height-20);ctx.stroke();
+    }
+    const emptyRuns=[];
+    this.runs.forEach((run,i)=>{
+      const y=this.top+i*this.rowHeight,scoreTop=y+25,scoreBottom=y+58,readTop=y+71,readBottom=y+96;
+      ctx.textAlign='left';ctx.fillStyle=run.colour;ctx.font='600 11px system-ui';
+      ctx.fillText(`${run.sample.cell_line} · ${run.sample.replicate} / ${run.sample.run}`,1,y+13);
+      ctx.font='600 10px system-ui';ctx.fillStyle='#52645c';ctx.textAlign='right';
+      ctx.fillText('Score',this.left-10,y+45);ctx.fillText('Reads',this.left-10,y+87);ctx.textAlign='left';
+      ctx.strokeStyle='#dfe5dc';ctx.beginPath();ctx.moveTo(this.left,scoreBottom);ctx.lineTo(this.width-this.right,scoreBottom);ctx.moveTo(this.left,readBottom);ctx.lineTo(this.width-this.right,readBottom);ctx.stroke();
+      ctx.save();ctx.beginPath();ctx.rect(this.left,y,this.plotWidth,this.rowHeight);ctx.clip();
+      ctx.setLineDash([3,3]);ctx.strokeStyle='#b87538';ctx.beginPath();ctx.moveTo(this.left,scoreBottom-this.threshold*(scoreBottom-scoreTop));ctx.lineTo(this.width-this.right,scoreBottom-this.threshold*(scoreBottom-scoreTop));ctx.stroke();ctx.setLineDash([]);
+      let visible=0;
+      for(const row of run.rows){
+        if(row[1]<this.window[0]||row[1]>this.window[1])continue;visible++;
+        const px=x(row[1]),sy=scoreBottom-row[4]*(scoreBottom-scoreTop),ry=readBottom-Math.log1p(row[3])/Math.log1p(this.maxReads)*(readBottom-readTop);
+        ctx.strokeStyle=run.colour;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(px,scoreBottom);ctx.lineTo(px,sy);ctx.stroke();
+        ctx.fillStyle=run.colour;ctx.beginPath();ctx.arc(px,sy,2.2,0,Math.PI*2);ctx.fill();
+        ctx.globalAlpha=.7;ctx.fillRect(px-1.5,ry,3,Math.max(1,readBottom-ry));ctx.globalAlpha=1;
+      }
+      if(!visible)emptyRuns.push(y);
+      ctx.restore();ctx.lineWidth=1;
+      ctx.strokeStyle='#a7b8ac';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(0,y+this.rowHeight-3);ctx.lineTo(this.width,y+this.rowHeight-3);ctx.stroke();
+      ctx.lineWidth=1;
+    });
+    if(this.position!==null&&this.position>=this.window[0]&&this.position<=this.window[1]){
+      ctx.strokeStyle='#20372f';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x(this.position),this.top);ctx.lineTo(x(this.position),height-20);ctx.stroke();
+    }
+    // Empty-state text sits in the run heading, clear of both plot baselines.
+    // Draw it last on an opaque backing so selection/grid lines cannot cross it.
+    ctx.font='10px system-ui';ctx.textAlign='left';
+    for(const y of emptyRuns){
+      const lines=this.plotWidth<190?['No qualifying sites','in this window']:['No qualifying sites in this window'];
+      const textWidth=Math.max(...lines.map(line=>ctx.measureText(line).width));
+      ctx.fillStyle='#fff';ctx.fillRect(this.left+4,y+1,textWidth+10,lines.length*11+5);
+      ctx.fillStyle='#66746e';lines.forEach((line,i)=>ctx.fillText(line,this.left+8,y+12+i*11));
+    }
+    ctx.font='10px system-ui';ctx.fillStyle='#66746e';ctx.textAlign='center';ctx.fillText('Transcript position',this.left+this.plotWidth/2,height-3);
+  }
+
+  drawOverview() {
+    const axisHeight=22;
+    const overview=this.context(this.overview,this.width,axisHeight+58);
+    overview.fillStyle='#f5f7f1';overview.fillRect(this.left,axisHeight,this.plotWidth,58);
+    const fullX=p=>this.left+(p-this.domain[0])/(this.domain[1]-this.domain[0])*this.plotWidth;
+    // Coordinate ticks describe the full observed span, independent of track zoom.
+    overview.font='10px system-ui';overview.fillStyle='#66746e';
+    const labelWidth=Math.max(overview.measureText(fmt(this.domain[0])).width,overview.measureText(fmt(this.domain[1])).width);
+    const intervals=Math.max(1,Math.min(5,Math.floor(this.plotWidth/(labelWidth+24))));
+    const seen=new Set();
+    for(let i=0;i<=intervals;i++){
+      const position=Math.round(this.domain[0]+i/intervals*(this.domain[1]-this.domain[0]));
+      if(seen.has(position))continue;seen.add(position);
+      const px=fullX(position);
+      overview.textAlign=position===this.domain[0]?'left':position===this.domain[1]?'right':'center';
+      overview.fillText(fmt(position),px,13);
+      overview.strokeStyle='#bbc8ba';overview.beginPath();overview.moveTo(px,17);overview.lineTo(px,axisHeight);overview.stroke();
+    }
+    overview.textAlign='left';
+    // Per-pixel maxima retain high-score sites in a dense full-span overview.
+    const peaks=new Map();
+    for(const row of this.rows){const pixel=Math.round(fullX(row[1]));peaks.set(pixel,Math.max(peaks.get(pixel)||0,row[4]));}
+    overview.strokeStyle='#95b29d';
+    for(const [pixel,score]of peaks){overview.beginPath();overview.moveTo(pixel,axisHeight+48);overview.lineTo(pixel,axisHeight+48-score*34);overview.stroke();}
+    if($('transcript-run-tracks').open){
+      overview.fillStyle='#17634e18';overview.fillRect(fullX(this.window[0]),axisHeight+4,Math.max(2,fullX(this.window[1])-fullX(this.window[0])),48);
+      overview.strokeStyle='#17634e';overview.strokeRect(fullX(this.window[0]),axisHeight+4,Math.max(2,fullX(this.window[1])-fullX(this.window[0])),48);
+    }
+    overview.font='10px system-ui';overview.fillStyle='#66746e';overview.fillText('Observed span',1,axisHeight+22);
+    if(this.position!==null){overview.strokeStyle='#20372f';overview.beginPath();overview.moveTo(fullX(this.position),axisHeight+4);overview.lineTo(fullX(this.position),axisHeight+52);overview.stroke();}
+    $('track-threshold-value').textContent=this.threshold.toFixed(4);
+    $('track-threshold-value').title=`Saved H04 threshold: ${this.threshold}`;
+    $('track-empty').hidden=!!this.rows.length;
+    $('track-scale-note').textContent=`Both panels use the same coordinates across runs. Score scale: 0–1; dashed line: ${this.threshold.toFixed(4)}. Read support: 0–${fmt(this.maxReads)}, log(1 + reads), shared across all shown runs. Observed span: ${fmt(this.domain[0])}–${fmt(this.domain[1])}; annotated transcript length is unavailable.`;
+  }
+
+  overviewX(event){return event.clientX-this.overview.getBoundingClientRect().left;}
+  overviewWindowHit(x){
+    if(!$('transcript-run-tracks').open||!this.domain||!this.window||!this.positions.length)return false;
+    const scale=this.plotWidth/(this.domain[1]-this.domain[0]);
+    const selectedX=this.position===null?Infinity:this.left+(this.position-this.domain[0])*scale;
+    // The selected-position line is an indicator, never a drag handle.
+    if(Math.abs(x-selectedX)<=5)return false;
+    return x>=this.left+(this.window[0]-this.domain[0])*scale&&x<=this.left+(this.window[1]-this.domain[0])*scale;
+  }
+  local(event){const rect=this.canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
+  toPosition(x){return this.window[0]+(x-this.left)/this.plotWidth*(this.window[1]-this.window[0]);}
+  hit(event){
+    if(!this.window)return null;
+    const p=this.local(event),index=Math.floor((p.y-this.top)/this.rowHeight);
+    if(p.x<this.left||p.x>this.width-this.right||index<0||index>=this.runs.length)return null;
+    const row=nearestRow(this.runs[index].rows,this.toPosition(p.x),9/this.plotWidth*(this.window[1]-this.window[0]));
+    return row&&row[1]>=this.window[0]&&row[1]<=this.window[1]?row:null;
+  }
+  hover(event){
+    const row=this.hit(event);if(!row){this.hideTip();return;}
+    const p=this.local(event),run=this.runs.find(r=>r.index===row[0]);
+    this.tip.textContent=`${run.sample.cell_line} · replicate ${run.sample.replicate} / run ${run.sample.run}\nPosition ${fmt(row[1])} · ${row[2]}\nScore ${row[4]} · ${fmt(row[3])} reads`;
+    this.tip.hidden=false;
+    this.tip.style.left=`${Math.max(0,Math.min(p.x+12,this.width-250))}px`;
+    this.tip.style.top=`${Math.max(0,p.y-82)}px`;
+    this.canvas.style.cursor='pointer';
+  }
+  hideTip(){this.tip.hidden=true;this.canvas.style.cursor='grab';}
+}
+
 start();
+

@@ -67,7 +67,7 @@ A site observed in three runs contributes **three run–site observations**. The
 2. Look at the dots in **How often is a site called modified?** Hover over or click a dot to inspect a run.
 3. Select a square in **Which cell lines share predictions?** to open that pair in **Compare cell lines**. Alternatively, choose A549 and HepG2 from the comparison dropdowns.
 4. Scroll to **Sites with consistent differences**. Click a transcript link in a candidate row to inspect that exact position.
-5. In **Explore a transcript**, inspect the selected position's run scores, read counts, and replicate support. You can also enter `ENST00000451270` directly or use a **Try a candidate** button.
+5. In **Explore a transcript**, click the score overview to select a position, then inspect its linked heatmap column and detail table. Select **Expand tracks** for individual run scores/read support. You can also enter `ENST00000451270` directly or use a **Try a candidate** button.
 6. Change the read support to **50 reads** and see whether the pattern still has support. A site disappearing means it no longer meets the filters; it does not prove that the prediction was wrong.
 7. Download the relevant CSV and use **How to read the data** to check the interpretation rules before describing a finding.
 
@@ -212,19 +212,50 @@ Known versioned IDs are supported. If the app resolves one to a shared identifie
 
 Search uses transcript IDs. Gene symbols are not mapped in this dataset. Transcripts outside the prepared catalogue can be checked through the query service, so the suggestions are not a complete list of everything searchable.
 
+### Choose cell lines
+
+Use **Show runs from** to select one or more cell lines. **All cell lines** selects or clears all.
+
+The selection and minimum read support apply to every transcript view and the CSV export. Changing filters may remove positions that no longer qualify.
+
+### Transcript overview: predicted scores
+
+The overview stays visible when tracks are collapsed. Bars show the highest score **among qualifying runs** at each position; the dark line marks the selected site. A high bar may reflect just one run, rather than agreement across replicates.
+
+Click to select the nearest eligible position. The overview, heatmap and detail table update together. The dark line cannot be dragged.
+
+Coordinate ticks cover the observed span, which is not necessarily the full transcript length. The summary counts all eligible positions under your current filters.
+
+### Individual sequencing runs
+
+Select **Expand tracks** to reveal per-run plots and navigation controls. Runs are labelled **Cell line · replicate / run** (Eg. **A549 · 5 / 1**):
+
+| Panel | What it shows |
+| --- | --- |
+| Score | Run-level scores from 0 to 1. The orange dashed line marks the saved H04 threshold. |
+| Reads | Read counts at scored sites, on a shared log(1 + reads) scale—not continuous sequencing coverage. |
+
+Hover for exact values; click a site to update the linked views.
+
+Use **Move**, **Zoom**, **Full observed span**, or **From/To** → **View range** to navigate. You can also pan by dragging the run plots or the **green overview rectangle**, and zoom with **Ctrl + wheel**. Keyboard shortcuts appear in the expanded section.
+
+Collapsing preserves the viewing range. The viewing status counts positions within that range, while the overview summary counts all eligible positions.
+
+**Zoom changes only the track display**. The heatmap, detail table and CSV continue to use all observations qualifying under your filters.
+
 ### Read the transcript summary and heatmap
 
 The cards show observed positions, qualifying runs, eligible observations, and positive observations under the current transcript filters. A qualifying run has at least one eligible observation; a positive observation is a run-level score at or above the saved threshold.
 
 In the heatmap, rows are sequencing runs and columns are observed transcript positions. Cell color represents the score, with darker green indicating higher scores. Hover over a populated cell to see its score and read count.
 
-Use **Show runs from** to choose one cell line or all cell lines. Use **Positions** arrows to browse up to 24 observed positions at a time. These columns need not represent consecutive positions along the transcript.
+Use **Show runs from** to choose one cell line or all cell lines. Use **Positions** arrows to browse up to 24 observed positions at a time. These columns need not represent consecutive positions along the transcript. Selecting a site in the overview or run tracks opens its heatmap page automatically.
 
 A dash means that an observation is missing or does not meet the current read-support filter. It is never treated as a negative prediction.
 
 ### Inspect a position
 
-Select a position heading or a populated heatmap cell to update **Selected position**.
+Select a position heading, populated heatmap cell, overview site or individual track site to update **Selected position**. The overview's dark line follows the same selection.
 
 The cell-line summaries show the mean score, qualifying replicate count, number of positive replicates, and sequence context. One qualifying replicate is labeled as limited support; it can be inspected here but is insufficient for pairwise comparisons.
 
@@ -297,5 +328,6 @@ When describing a finding, record the cell-line pair, transcript ID, position, r
 | Changing the overview threshold leaves comparisons unchanged | This is expected. Comparisons and transcript calls always use the saved H04 threshold. |
 | Transcript data reports a decompression error | Use an up-to-date browser and keep the supplied `.json.gz` files intact. |
 | The query service reports mismatched snapshots | Replace both data folders with copies from the same analysis run, then rebuild. |
+| Individual run plots or zoom controls are not visible | Select **Expand tracks** below the always-visible transcript overview. |
 
 For setup and Docker troubleshooting, see the [README](../README.md). For analysis methods, validation, and regeneration commands, see the [Task 2 team guide](TASK2.md). For scoring new input files with H04 outside the dashboard, see the [inference guide](INFERENCE.md).

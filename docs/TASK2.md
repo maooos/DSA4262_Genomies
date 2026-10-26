@@ -61,7 +61,11 @@ or regenerated.
    over scatter points, filter and sort candidates, and download CSV. Swap A/B
    to reverse the comparison and its score differences.
 3. **Explore a transcript:** click a candidate or enter an Ensembl transcript ID.
-   Select a heatmap position for individual scores, read counts, original IDs
+   Choose one or more cell lines in **Show runs from**, then click the always-visible
+   score overview to select the nearest eligible position. The heatmap opens its
+   corresponding page and the detail table updates. Select **Expand tracks** for
+   individual run scores/read support and zoom/pan controls. Dashes in the heatmap
+   mean absent or insufficient coverage.
    and replicate-weighted means. Dashes mean absent or insufficient coverage.
 4. **How to read the data:** definitions, aggregation rules, limitations, provenance
    and the report. Reviewable report figures and tables also live in `reports/task2/`.

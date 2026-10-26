@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import {
+  observedExtent,
+  clampWindow,
+  zoomWindow,
+  panWindow,
+  nearestRow,
+  pageForPosition,
   parseReadSupport,
   overviewRows,
   orientPair,
@@ -13,7 +19,6 @@ import {
 } from "../task2_site/dist/core.mjs";
 const data = new URL("../task2_site/dist/data/", import.meta.url);
 const read = (name) => JSON.parse(readFileSync(new URL(name, data)));
-const study = read("summary.json");
 
 test("custom read support accepts exact positive integers, not invalid or rounded values", () => {
   for (const n of [1, 7, 25, 37, 100, 100000, Number.MAX_SAFE_INTEGER])
@@ -31,6 +36,7 @@ test("custom transcript cutoffs filter exact boundaries, including below ten and
 });
 
 test("overview coverage filters match the complete prediction audit", () => {
+  const study = read("summary.json");
   const rows = overviewRows(study, 20, study.threshold);
   assert.equal(rows.length, 23);
   assert.equal(
@@ -110,6 +116,7 @@ test("different sequence contexts are never averaged together", () => {
   assert.ok(groups.every((g) => g.replicates === 1));
 });
 test("real candidate transcript agrees with exported pair scores after aggregation", () => {
+  const study = read("summary.json");
   const index = read("transcript_index.json"),
     id = "ENST00000451270";
   const rows = JSON.parse(
@@ -136,6 +143,7 @@ test("real candidate transcript agrees with exported pair scores after aggregati
   );
 });
 test("CSV exports preserve full score precision and escape labels", () => {
+  const study = read("summary.json");
   const text = csvText(
     [
       { id: "=formula", score: study.threshold },
@@ -148,6 +156,7 @@ test("CSV exports preserve full score precision and escape labels", () => {
   assert.ok(text.includes('quoted,""id'));
 });
 test("all pair assets match their complete summary, for every coverage setting", () => {
+  const study = read("summary.json");
   for (const [coverage, scenario] of Object.entries(study.scenarios))
     for (const stats of scenario.pairs) {
       const pair = read(
@@ -164,4 +173,47 @@ test("all pair assets match their complete summary, for every coverage setting",
       );
       assert.ok(pair.candidates.length <= pair.candidate_limit);
     }
+});
+
+
+// Transcript explorer: multiselect, coordinate navigation and heatmap paging.
+test('multiselect combines chosen cell lines, applies coverage, and supports empty selections',()=>{
+  const samples=[{cell_line:'A549'},{cell_line:'HepG2'},{cell_line:'K562'}];
+  const rows=[[0,100,'AAAAAAA',30,.5],[1,100,'AAAAAAA',10,.2],[2,100,'AAAAAAA',40,.8]];
+  assert.deepEqual(transcriptRows(rows,samples,20,['A549','K562']),[rows[0],rows[2]]);
+  assert.deepEqual(transcriptRows(rows,samples,20,['HepG2']),[]);
+  assert.deepEqual(transcriptRows(rows,samples,1,[]),[]);
+  assert.deepEqual(transcriptRows(rows,samples,20,'all'),[rows[0],rows[2]]);
+  assert.deepEqual(transcriptRows(rows,samples,20,'K562'),[rows[2]]);
+});
+
+test('observed span handles empty, unsorted and single-site data',()=>{
+  assert.equal(observedExtent([]),null);
+  assert.deepEqual(observedExtent([[0,500],[0,100],[0,300]]),[100,500]);
+  assert.deepEqual(observedExtent([[0,100]]),[100,101]);
+});
+test('zoom and pan preserve span at boundaries and stay within observed coordinates',()=>{
+  const domain=[100,1000];
+  assert.deepEqual(zoomWindow([100,1000],2,domain),[325,775]);
+  assert.deepEqual(panWindow([325,775],1,domain),[550,1000]);
+  assert.deepEqual(panWindow([325,775],-1,domain),[100,550]);
+  assert.deepEqual(zoomWindow([100,200],.01,domain),domain);
+  assert.deepEqual(clampWindow(0,200,domain),[100,300]);
+});
+test('pointer-anchored zoom retains its relative anchor and minimum one-base window',()=>{
+  assert.deepEqual(zoomWindow([100,500],2,[100,1000],200),[150,350]);
+  assert.deepEqual(zoomWindow([100,101],10,[100,1000]),[100,101]);
+});
+test('nearest-site lookup respects sparse coordinates, tolerance and empty runs',()=>{
+  const rows=[[0,100],[0,200],[0,1000]];
+  assert.equal(nearestRow(rows,950,60),rows[2]);
+  assert.equal(nearestRow(rows,600,60),null);
+  assert.equal(nearestRow(rows,150),rows[0]);
+  assert.equal(nearestRow([],100),null);
+});
+test('off-page selection finds the correct 24-column heatmap page',()=>{
+  const positions=Array.from({length:60},(_,i)=>100+i*137);
+  assert.equal(pageForPosition(positions,positions[59]),2);
+  assert.equal(pageForPosition(positions,positions[24]),1);
+  assert.equal(pageForPosition(positions,-1),0);
 });

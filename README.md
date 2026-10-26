@@ -91,7 +91,7 @@ and sharing your results.
 | --- | --- |
 | Study overview | See per-run predictions, cell-line overlap and replicate agreement. |
 | Compare cell lines | Find matched sites with different predicted scores in two cell lines. |
-| Explore a transcript | Inspect scores, read counts and missing observations at individual positions. |
+| Explore a transcript | Select sites in a full-span score overview, expand individual run tracks, and inspect the linked heatmap and position table. |
 | How to read the data | Understand the methods, limitations and results report. |
 | Minimum read support | Enter a whole number ≥1 and click **Apply**, or use the 10/20/50 presets. |
 

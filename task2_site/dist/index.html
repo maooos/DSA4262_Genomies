@@ -9,8 +9,8 @@
     />
     <title>SG-NEx Atlas · RNA modification explorer</title>
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
-    <script type="module" src="app.js"></script>
+    <link rel="stylesheet" href="styles.css?v=dashboard-overview-4" />
+    <script type="module" src="app.js?v=dashboard-overview-4"></script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to results</a>
@@ -348,18 +348,67 @@
                   replicate support.
                 </p>
                 <div class="inline-control">
-                  <label for="transcript-cell">Show runs from</label
-                  ><select id="transcript-cell">
-                    <option value="all">All cell lines</option></select
-                  ><span class="score-legend"
+                  <span id="transcript-cell-label">Show runs from</span>
+                  <details id="transcript-cell-filter" class="transcript-cell-filter">
+                    <summary id="transcript-cell-summary" aria-label="Choose cell lines to show">All cell lines</summary>
+                    <div id="transcript-cell" class="transcript-cell-options" role="group" aria-labelledby="transcript-cell-label"></div>
+                  </details>
+                  <span class="score-legend"
                     ><i></i> Score 0 → 1
                     <span class="missing-key">—</span> Missing / below
                     coverage</span
                   >
                 </div>
+                <div id="transcript-tracks" class="transcript-tracks">
+                  <div class="track-heading"><h3>Transcript overview: predicted scores</h3></div>
+                  <div class="track-body">
+                  <p id="track-load-message" class="loading" role="status">Loading transcript tracks… If this message stays visible after transcript data appears, rebuild with docker compose up --build -d and hard-refresh this page to load the matching JavaScript files.</p>
+                  <canvas id="transcript-tracks-overview" class="track-overview" tabindex="0" role="group" aria-label="Transcript overview. Click to select the nearest eligible position. Arrow keys select adjacent positions; Home and End select the first and last position." aria-describedby="track-overview-instruction track-overview-explanation"></canvas>
+                  <p id="track-overview-summary" class="track-window-status" role="status" aria-live="polite"></p>
+                  <p id="track-overview-instruction" class="muted">Click the overview to select the nearest eligible position and view its details below.</p>
+                  <p id="track-overview-explanation" class="footnote">Bars show the highest predicted score among qualifying runs at each position. The dark line marks the selected position.</p>
+                  <details id="transcript-run-tracks" class="track-run-disclosure">
+                    <summary class="track-disclosure">
+                      <span><strong>Individual sequencing runs</strong><small>Expand this section to view score and read-support panels</small></span>
+                      <span id="track-toggle-label" class="track-toggle-label">Expand tracks</span>
+                    </summary>
+                    <div class="track-run-body">
+                  <p id="track-keyboard-help" class="muted">Drag horizontally within the individual tracks to pan, or drag the green rectangle above. Ctrl + wheel zooms around the pointer. Keyboard: focus the tracks, use ← / → to select adjacent sites, Home / End for first / last site, and + / − to zoom. Normal scrolling moves the page.</p>
+                  <div class="track-toolbar" role="group" aria-label="Transcript track navigation">
+                    <button type="button" class="button secondary" data-track-pan="-0.5" aria-label="Move track window left">← Move</button>
+                    <button type="button" class="button secondary" data-track-pan="0.5" aria-label="Move track window right">Move →</button>
+                    <button type="button" class="button secondary" data-track-zoom="2">Zoom in 2×</button>
+                    <button type="button" class="button secondary" data-track-zoom="0.5">Zoom out 2×</button>
+                    <button type="button" class="button secondary" id="track-full-span">Full observed span</button>
+                  </div>
+                  <form id="track-range-form" class="track-range-form" novalidate>
+                    <label for="track-start">From position<input id="track-start" type="number" min="0" step="1" inputmode="numeric" aria-describedby="track-range-error" /></label>
+                    <label for="track-end">To position<input id="track-end" type="number" min="0" step="1" inputmode="numeric" aria-describedby="track-range-error" /></label>
+                    <button id="track-range-apply" type="submit" class="button secondary">View range</button>
+                  </form>
+                  <p id="track-range-error" class="coverage-error" role="alert" hidden>Enter whole-number positions with the end greater than the start. The previous window has been kept.</p>
+                  <p id="track-window-status" class="track-window-status" role="status" aria-live="polite"></p>
+                      <div id="track-threshold-legend" class="track-threshold-legend"><span class="track-threshold-swatch" aria-hidden="true"></span><span>H04 prediction threshold <strong id="track-threshold-value"></strong></span></div>
+                  <div class="track-canvas-wrap">
+                    <canvas id="transcript-tracks-canvas" tabindex="0" aria-describedby="track-keyboard-help track-scale-note track-threshold-legend">Run-level scores and read support. The heatmap and selected-position table below provide the same observations in tabular form.</canvas>
+                    <div id="transcript-tracks-tooltip" class="track-tooltip" hidden></div>
+                  </div>
+                  <p id="track-empty" class="empty" hidden>No observations meet the current filters. Lower the read support or choose another cell line.</p>
+                  <p id="track-scale-note" class="footnote"></p>
+                  <p class="footnote">Read bars are counts at scored positions, not continuous sequencing coverage. Positions are transcript coordinates; gene structure and genomic annotations are not inferred.</p>
+                    </div>
+                  </details>
+                  </div>
+                </div>
+                <div class="transcript-heatmap-heading">
+                  <h3 id="transcript-heatmap-title">Run-level model scores</h3>
+                  <p class="muted">Heatmap colours show H04 scores from 0 to 1. Rows are sequencing runs; columns are observed positions. Select a position to inspect its details below.</p>
+                </div>
                 <div
                   id="transcript-heatmap"
                   class="table-wrap transcript-heatmap"
+                  role="region"
+                  aria-labelledby="transcript-heatmap-title"
                 ></div>
                 <div class="pagination">
                   <span id="position-count"></span>
@@ -574,3 +623,4 @@
     >
   </body>
 </html>
+
