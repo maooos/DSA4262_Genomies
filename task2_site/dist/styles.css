@@ -10,7 +10,7 @@
   --blue: #466fa1;
   --radius: 14px;
   font-family:
-    Inter,s
+    Inter,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
@@ -58,7 +58,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid #8dbd60;
+  outline: 3px solid #93c5fd;
 }
 [hidden] {
   display: none !important;
@@ -78,7 +78,7 @@ select:focus-visible {
   inset: 0 auto 0 0;
   width: 245px;
   background: var(--dark);
-  color: #e0eee7;
+  color: #dbeafe;
   padding: 35px 22px;
   display: flex;
   flex-direction: column;
@@ -98,11 +98,11 @@ select:focus-visible {
   flex-shrink: 0;
   width: 47px;
   height: 47px;
-  border: 1px solid #759b81;
+  border: 1px solid #759bc1;
   border-radius: 13px;
   display: grid;
   place-items: center;
-  background: #234f40;
+  background: #234b78;
   color: var(--lime);
   font:
     600 22px Georgia,
@@ -110,19 +110,19 @@ select:focus-visible {
 }
 .brand b {
   font-weight: 400;
-  color: #b0d99c;
+  color: #93c5fd;
 }
 .brand small {
   display: block;
   font-size: 7.5px;
   letter-spacing: 1.25px;
   margin-top: 5px;
-  color: #a4baab;
+  color: #94b5da;
 }
 .nav-label {
   font-size: 9px;
   letter-spacing: 1.8px;
-  color: #8ea99a;
+  color: #94b5da;
   margin: 54px 12px 16px;
 }
 nav {
@@ -134,17 +134,17 @@ nav a {
   align-items: center;
   gap: 12px;
   text-decoration: none;
-  color: #c0d0c5;
+  color: #c0d3eb;
   padding: 13px 12px;
   border-radius: 8px;
   font-size: 13px;
 }
 nav a:hover {
-  background: #244b3e;
+  background: #234b78;
 }
 nav a.active {
   background: var(--lime);
-  color: #23442d;
+  color: #1e40af;
   font-weight: 600;
 }
 .nav-icon {
@@ -154,27 +154,27 @@ nav a.active {
 }
 .sidebar-note {
   margin-top: auto;
-  border-top: 1px solid #3b5848;
+  border-top: 1px solid #3b587a;
   padding: 24px 9px 0;
   font-size: 10px;
-  color: #a8bcac;
+  color: #94b5da;
 }
 .sidebar-note p {
   font-family: Georgia, serif;
   font-size: 17px;
   line-height: 1.5;
-  color: #d9e4d9;
+  color: #dbeafe;
 }
 .sidebar-note a {
   font-size: 10px;
-  color: #d9edbc;
+  color: #dbeafe;
   text-decoration: none;
 }
 .live-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
-  background: #b9d694;
+  background: #93c5fd;
   border-radius: 50%;
   margin-right: 5px;
 }
@@ -190,7 +190,7 @@ nav a.active {
   padding: 0 40px;
   font-size: 9px;
   letter-spacing: 1.3px;
-  background: #fafbf8;
+  background: #f8fafc;
   color: var(--muted);
 }
 #breadcrumb {
@@ -200,14 +200,14 @@ nav a.active {
 }
 .slash {
   margin: 0 15px;
-  color: #bac3b8;
+  color: #e2e8f0;
 }
 .dataset-badge {
   font-size: 10px;
   letter-spacing: 0;
-  border: 1px solid #d9e3d5;
-  background: #eef4e8;
-  color: #42603a;
+  border: 1px solid #dce5ef;
+  background: #eff6ff;
+  color: #1e40af;
   padding: 6px 12px;
   border-radius: 30px;
 }
@@ -228,7 +228,7 @@ main {
   font-size: 9px;
   letter-spacing: 1.8px;
   font-weight: 650;
-  color: #73816c;
+  color: #64748b;
   margin-bottom: 10px;
 }
 h1 {
@@ -278,15 +278,15 @@ p {
   border-color: var(--green);
 }
 .primary:hover {
-  background: #104a39;
+  background: #1d4ed8;
 }
 .secondary {
   background: #fff;
   color: var(--ink);
 }
 .secondary:hover {
-  background: #f0f5ec;
-  border-color: #bac9b3;
+  background: #eff6ff;
+  border-color: #bfdbfe;
 }
 .text-button {
   border: 0;
@@ -306,7 +306,7 @@ p {
   align-items: center;
   gap: 20px;
   border: 1px solid var(--line);
-  background: #eef1e9;
+  background: #eff6ff;
   border-radius: 10px;
   padding: 13px 18px;
   margin-bottom: 24px;
@@ -347,13 +347,13 @@ p {
 }
 .filter-symbol {
   font-size: 22px;
-  color: #6a8061;
+  color: #64748b;
 }
 .segmented {
   display: flex;
   gap: 3px;
   padding: 4px;
-  background: #e4e9de;
+  background: #e2e8f0;
   border-radius: 7px;
 }
 .segmented button {
@@ -362,17 +362,17 @@ p {
   background: transparent;
   padding: 7px 12px;
   font-size: 11px;
-  color: #62715c;
+  color: #64748b;
 }
 .segmented button[aria-pressed="true"] {
   background: white;
-  box-shadow: 0 1px 4px #243e1720;
+  box-shadow: 0 1px 4px #17365d20;
   color: var(--ink);
 }
 .segmented span {
   font-size: 7px;
-  background: #eef3e8;
-  color: #617252;
+  background: #eff6ff;
+  color: #64748b;
   padding: 3px 4px;
   margin-left: 4px;
   border-radius: 3px;
@@ -412,14 +412,14 @@ p {
 .stat-note {
   display: block;
   font-size: 9px;
-  color: #7c8578;
+  color: #64748b;
 }
 .stat:first-child {
-  background: #e8efdf;
-  border-color: #d8e3ca;
+  background: #eff6ff;
+  border-color: #dce5ef;
 }
 .stat:first-child .stat-value {
-  color: #355a31;
+  color: #1e40af;
 }
 .grid {
   display: grid;
@@ -466,7 +466,7 @@ p {
 }
 select,
 input {
-  border: 1px solid #dce2d7;
+  border: 1px solid #dce5ef;
   background: white;
   border-radius: 6px;
   padding: 9px 11px;
@@ -478,7 +478,7 @@ select {
   font-size: 11px;
 }
 input::placeholder {
-  color: #8b9589;
+  color: #64748b;
 }
 label {
   font-size: 11px;
@@ -501,14 +501,14 @@ label {
 .fraction-track {
   height: 20px;
   position: relative;
-  background: linear-gradient(to right, #e7ece3 1px, transparent 1px);
+  background: linear-gradient(to right, #dce5ef 1px, transparent 1px);
   background-size: 25% 100%;
 }
 .fraction-range {
   height: 3px;
   position: absolute;
   top: 9px;
-  background: #b7cb9b;
+  background: #93c5fd;
   border-radius: 3px;
 }
 .fraction-dot {
@@ -517,14 +517,14 @@ label {
   border-radius: 50%;
   position: absolute;
   top: 5px;
-  background: #618747;
+  background: #2563eb;
   border: 2px solid white;
-  box-shadow: 0 0 0 1px #618747;
+  box-shadow: 0 0 0 1px #2563eb;
   transform: translateX(-50%);
 }
 .fraction-row:nth-child(even) .fraction-dot {
-  background: #2d7966;
-  box-shadow: 0 0 0 1px #2d7966;
+  background: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb;
 }
 .fraction-row small {
   font-size: 9px;
@@ -535,17 +535,17 @@ label {
   justify-content: space-between;
   margin: 8px 62px 0 76px;
   font-size: 9px;
-  color: #8b9587;
+  color: #64748b;
 }
 .chart-caption {
-  color: #7e8879;
+  color: #64748b;
   font-size: 9px;
   text-align: center;
   margin: 15px 0 18px;
 }
 .interpretation {
-  background: #f1f5eb;
-  border-left: 3px solid #a0bb81;
+  background: #eff6ff;
+  border-left: 3px solid #93c5fd;
   border-radius: 0 5px 5px 0;
   padding: 13px 15px;
   font-size: 11px;
@@ -554,7 +554,7 @@ label {
 }
 .footnote {
   font-size: 10px;
-  color: #778273;
+  color: #64748b;
   line-height: 1.75;
   margin: 15px 0 0;
 }
@@ -580,19 +580,19 @@ label {
   border-radius: 4px;
   font-size: 10px;
   min-height: 28px;
-  color: #1d4d36;
+  color: #1e40af;
 }
 .heat-cell:hover {
   outline: 2px solid var(--green);
   outline-offset: 1px;
 }
 .heat-empty {
-  background: #f3f5f0;
+  background: #f1f5f9;
   display: grid;
   place-items: center;
   border-radius: 4px;
   aspect-ratio: 1.25;
-  color: #acb5a7;
+  color: #94a3b8;
 }
 .heatmap-legend {
   display: flex;
@@ -606,17 +606,17 @@ label {
 .gradient {
   width: 100px;
   height: 6px;
-  background: linear-gradient(to right, #f0f5e9, #bad39b, #24674b);
+  background: linear-gradient(to right, #eff6ff, #93c5fd 40%, #2563eb 70%, #1e3a8a);
   border-radius: 8px;
 }
 .tag {
   display: inline-block;
   font-size: 9px;
-  border: 1px solid #e2e7dc;
+  border: 1px solid #dce5ef;
   border-radius: 5px;
   padding: 5px 8px;
-  color: #6c7d60;
-  background: #f9fbf6;
+  color: #64748b;
+  background: #f8fafc;
   white-space: nowrap;
 }
 .table-wrap {
@@ -629,9 +629,9 @@ table {
   font-size: 11px;
 }
 th {
-  background: #f8faf5;
+  background: #f8fafc;
   font-weight: 500;
-  color: #74806c;
+  color: #64748b;
   font-size: 9px;
   text-align: left;
   padding: 12px 11px;
@@ -640,11 +640,11 @@ th {
 }
 td {
   padding: 12px 11px;
-  border-bottom: 1px solid #edf0e8;
+  border-bottom: 1px solid #dce5ef;
   white-space: nowrap;
 }
 tbody tr:hover {
-  background: #f9fbf7;
+  background: #f8fafc;
 }
 .table-link {
   color: var(--green);
@@ -666,7 +666,7 @@ tbody tr:hover {
   display: inline-block;
   width: 70px;
   height: 5px;
-  background: #e9eee3;
+  background: #e2e8f0;
   margin: 0 10px;
   border-radius: 4px;
   vertical-align: middle;
@@ -674,7 +674,7 @@ tbody tr:hover {
 .mini-bar i {
   display: block;
   height: 5px;
-  background: #8bb16f;
+  background: #93c5fd;
   border-radius: 4px;
 }
 .comparison-controls {
@@ -694,7 +694,7 @@ tbody tr:hover {
   padding: 12px;
 }
 .swap {
-  border: 1px solid #dce3d4;
+  border: 1px solid #dce5ef;
   border-radius: 50%;
   background: white;
   width: 34px;
@@ -789,15 +789,15 @@ canvas {
   gap: 12px;
 }
 .positive {
-  color: #29664b;
-  background: #eaf3e5;
+  color: #1e40af;
+  background: #eff6ff;
   border-radius: 4px;
   padding: 3px 6px;
   font-size: 9px;
 }
 .negative {
-  color: #69756a;
-  background: #f0f2ed;
+  color: #64748b;
+  background: #f1f5f9;
   border-radius: 4px;
   padding: 3px 6px;
   font-size: 9px;
@@ -808,7 +808,7 @@ canvas {
   font-weight: 600;
 }
 .search-card {
-  background: linear-gradient(110deg, #fff, #f1f6eb);
+  background: linear-gradient(110deg, #fff, #eff6ff);
 }
 .search-card form {
   max-width: 760px;
@@ -842,12 +842,12 @@ canvas {
 .score-legend i {
   width: 60px;
   height: 7px;
-  background: linear-gradient(to right, #f1f5e7, #b6ce8c, #1b694b);
+  background: linear-gradient(to right, #eff6ff, #93c5fd 40%, #2563eb 70%, #1e3a8a);
   border-radius: 4px;
 }
 .missing-key {
   margin-left: 10px;
-  background: #f1f2ee;
+  background: #f1f5f9;
   padding: 0 5px;
 }
 .transcript-heatmap th {
@@ -878,7 +878,7 @@ canvas {
   height: 25px;
   font-size: 8px;
   border-radius: 3px;
-  color: #254d33;
+  color: #1e40af;
 }
 .site-cell.selected {
   outline: 2px solid var(--green);
@@ -886,8 +886,8 @@ canvas {
 }
 .site-missing {
   display: block;
-  background: #f4f5f0;
-  color: #aab3a2;
+  background: #f1f5f9;
+  color: #94a3b8;
   min-width: 29px;
   border-radius: 3px;
   font-size: 9px;
@@ -912,8 +912,8 @@ canvas {
   margin: 16px 0;
 }
 .support-item {
-  background: #f5f8f1;
-  border: 1px solid #e5ecdf;
+  background: #f8fafc;
+  border: 1px solid #dce5ef;
   padding: 12px;
   border-radius: 7px;
   font-size: 10px;
@@ -929,7 +929,7 @@ canvas {
   font-size: 9px;
 }
 .guide-intro {
-  background: #eaf0e1;
+  background: #eff6ff;
   padding: 30px;
 }
 .guide-intro > p {
@@ -947,7 +947,7 @@ canvas {
   font:
     28px Georgia,
     serif;
-  color: #7c9c62;
+  color: #93c5fd;
 }
 .guide-steps p {
   font-size: 11px;
@@ -998,7 +998,7 @@ summary {
 pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  background: #f6f8f2;
+  background: #f8fafc;
   padding: 18px;
   font-size: 10px;
 }
@@ -1008,7 +1008,7 @@ footer {
   border-top: 1px solid var(--line);
   padding-top: 24px;
   margin-top: 12px;
-  color: #7b8675;
+  color: #64748b;
   font-size: 10px;
 }
 footer a {
@@ -1022,7 +1022,7 @@ footer a {
 .error {
   padding: 24px;
   border-radius: 10px;
-  background: #edf2e7;
+  background: #eff6ff;
   margin: 18px 0;
   font-size: 12px;
 }

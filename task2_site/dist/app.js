@@ -23,10 +23,10 @@ const dec = (n, d = 3) => (finite(n) ? n.toFixed(d) : "—");
 const pct = (n) => (finite(n) ? (n * 100).toFixed(2) + "%" : "—");
 const compact = (n) => (n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : fmt(n));
 const palette = {
-  both: "#367c60",
-  a: "#b78042",
-  b: "#537aa6",
-  neither: "#b6c1b2",
+  both: "#2563eb",
+  a: "#d97706",
+  b: "#7c3aed",
+  neither: "#cbd5e1",
 };
 let study,
   index,
@@ -129,10 +129,25 @@ function csv(name, rows) {
 function stat(label, value, note) {
   return `<div class="stat"><span class="stat-label">${esc(label)}</span><strong class="stat-value">${esc(value)}</strong><span class="stat-note">${esc(note)}</span></div>`;
 }
-function color(value) {
-  if (!finite(value)) return "#f2f5ed";
+// Shared sequential blue scale: increasing values become darker on a fixed 0–1 domain.
+const heatStops = [[239, 246, 255], [147, 197, 253], [37, 99, 235], [30, 58, 138]];
+const heatPositions = [0, 0.4, 0.7, 1];
+function heatRGB(value) {
   const t = Math.max(0, Math.min(1, value));
-  return `rgb(${Math.round(242 - 211 * t)},${Math.round(247 - 139 * t)},${Math.round(231 - 157 * t)})`;
+  const i = t <= 0.4 ? 0 : t <= 0.7 ? 1 : 2;
+  const f = (t - heatPositions[i]) / (heatPositions[i + 1] - heatPositions[i]);
+  return heatStops[i].map((v, c) => Math.round(v + (heatStops[i + 1][c] - v) * f));
+}
+function color(value) {
+  return finite(value) ? `rgb(${heatRGB(value).join(",")})` : "#f1f5f9";
+}
+function heatText(value) {
+  if (!finite(value)) return "#17365d";
+  const luminance = heatRGB(value).map(v => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }).reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+  return luminance > 0.179 ? "#000" : "#fff";
 }
 function options(cells) {
   return cells
@@ -302,7 +317,7 @@ async function renderOverview() {
                   (p.cell_a === a && p.cell_b === b) ||
                   (p.cell_a === b && p.cell_b === a),
               );
-              return `<button class="heat-cell" data-pair-a="${esc(a)}" data-pair-b="${esc(b)}" style="background:${color(p?.jaccard)}" title="${esc(a)} / ${esc(b)}: ${dec(p?.jaccard)} overlap on ${fmt(p?.common_sites)} shared sites" aria-label="Compare ${esc(a)} and ${esc(b)}; Jaccard ${dec(p?.jaccard)}">${dec(p?.jaccard, 2)}</button>`;
+              return `<button class="heat-cell" data-pair-a="${esc(a)}" data-pair-b="${esc(b)}" style="background:${color(p?.jaccard)};color:${heatText(p?.jaccard)}" title="${esc(a)} / ${esc(b)}: ${dec(p?.jaccard)} overlap on ${fmt(p?.common_sites)} shared sites" aria-label="Compare ${esc(a)} and ${esc(b)}; Jaccard ${dec(p?.jaccard)}">${dec(p?.jaccard, 2)}</button>`;
             })
             .join(""),
       )
@@ -441,26 +456,26 @@ function drawScatter() {
     const v = i / 5,
       x = l + w * v,
       y = t + h * (1 - v);
-    ctx.strokeStyle = "#e9eee4";
+    ctx.strokeStyle = "#e2e8f0";
     ctx.beginPath();
     ctx.moveTo(x, t);
     ctx.lineTo(x, t + h);
     ctx.moveTo(l, y);
     ctx.lineTo(l + w, y);
     ctx.stroke();
-    ctx.fillStyle = "#7e8a76";
+    ctx.fillStyle = "#64748b";
     ctx.textAlign = "center";
     ctx.fillText(v.toFixed(1), x, t + h + 20);
     ctx.textAlign = "right";
     ctx.fillText(v.toFixed(1), l - 9, y + 3);
   }
-  ctx.strokeStyle = "#879c81";
+  ctx.strokeStyle = "#94a3b8";
   ctx.setLineDash([4, 4]);
   ctx.beginPath();
   ctx.moveTo(l, t + h);
   ctx.lineTo(l + w, t);
   ctx.stroke();
-  ctx.strokeStyle = "#b1bd9d";
+  ctx.strokeStyle = "#cbd5e1";
   const cutoff = study.threshold;
   ctx.beginPath();
   ctx.moveTo(l + w * cutoff, t);
@@ -484,7 +499,7 @@ function drawScatter() {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-  ctx.fillStyle = "#455c3b";
+  ctx.fillStyle = "#334155";
   ctx.textAlign = "center";
   ctx.font = "11px system-ui";
   ctx.fillText(`${state.a} · mean model score`, l + w / 2, height - 10);
@@ -636,7 +651,7 @@ function renderTranscript() {
               .map((p) => {
                 const r = map.get(`${i}|${p}`);
                 return r
-                  ? `<td><button class="site-cell ${p === state.position ? "selected" : ""}" data-select-position="${p}" style="background:${color(r[4])};color:${r[4] > 0.65 ? "#fff" : "#254d33"}" aria-label="${esc(s.cell_line)} replicate ${s.replicate} run ${s.run}, position ${p}, score ${dec(r[4], 4)}, ${r[3]} reads" title="${dec(r[4], 4)} score · ${fmt(r[3])} reads">${dec(r[4], 2)}</button></td>`
+                  ? `<td><button class="site-cell ${p === state.position ? "selected" : ""}" data-select-position="${p}" style="background:${color(r[4])};color:${heatText(r[4])}" aria-label="${esc(s.cell_line)} replicate ${s.replicate} run ${s.run}, position ${p}, score ${dec(r[4], 4)}, ${r[3]} reads" title="${dec(r[4], 4)} score · ${fmt(r[3])} reads">${dec(r[4], 2)}</button></td>`
                   : '<td><span class="site-missing" title="Missing or below selected read support">—</span></td>';
               })
               .join("")}</tr>`,
@@ -960,7 +975,7 @@ async function start() {
 }
 
 // Transcript explorer: zoomable run-level score and read-support tracks.
-const transcriptTrackColours = ['#17634e','#466fa1','#b87538','#806394','#9b5570','#427d80','#788547'];
+const transcriptTrackColours = ['#2563eb','#d97706','#7c3aed','#0891b2','#be185d','#475569','#9333ea'];
 
 class TranscriptTracks {
   constructor(onSelect) {
@@ -1168,29 +1183,29 @@ class TranscriptTracks {
     const ctx=this.context(this.canvas,this.width,height);
     ctx.fillStyle='#fff';ctx.fillRect(0,0,this.width,height);
     for(let i=0;i<this.runs.length;i++){
-      ctx.fillStyle='#f3f7f2';ctx.fillRect(this.left,this.top+i*this.rowHeight+66,this.plotWidth,34);
+      ctx.fillStyle='#f1f5f9';ctx.fillRect(this.left,this.top+i*this.rowHeight+66,this.plotWidth,34);
     }
-    ctx.font='10px system-ui';ctx.fillStyle='#66746e';
+    ctx.font='10px system-ui';ctx.fillStyle='#64748b';
     ctx.fillText('Scores 0–1; reads 0–'+fmt(this.maxReads)+' (log scale)',this.left,13);
-    ctx.font='600 10px system-ui';ctx.fillStyle='#20372f';
+    ctx.font='600 10px system-ui';ctx.fillStyle='#17365d';
     ctx.fillText(header,1,13);
-    ctx.font='10px system-ui';ctx.fillStyle='#66746e';
+    ctx.font='10px system-ui';ctx.fillStyle='#64748b';
     const x=p=>this.left+(p-this.window[0])/(this.window[1]-this.window[0])*this.plotWidth;
     const ticks=this.width<500?3:5,seenTicks=new Set();
     for(let i=0;i<=ticks;i++){
       const position=Math.round(this.window[0]+i/ticks*(this.window[1]-this.window[0]));
       if(seenTicks.has(position))continue;seenTicks.add(position);
       ctx.textAlign=i===0?'left':i===ticks?'right':'center';ctx.fillText(fmt(position),x(position),29);
-      ctx.strokeStyle='#edf0e9';ctx.beginPath();ctx.moveTo(x(position),this.top);ctx.lineTo(x(position),height-20);ctx.stroke();
+      ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(x(position),this.top);ctx.lineTo(x(position),height-20);ctx.stroke();
     }
     const emptyRuns=[];
     this.runs.forEach((run,i)=>{
       const y=this.top+i*this.rowHeight,scoreTop=y+25,scoreBottom=y+58,readTop=y+71,readBottom=y+96;
       ctx.textAlign='left';ctx.fillStyle=run.colour;ctx.font='600 11px system-ui';
       ctx.fillText(`${run.sample.cell_line} · ${run.sample.replicate} / ${run.sample.run}`,1,y+13);
-      ctx.font='600 10px system-ui';ctx.fillStyle='#52645c';ctx.textAlign='right';
+      ctx.font='600 10px system-ui';ctx.fillStyle='#475569';ctx.textAlign='right';
       ctx.fillText('Score',this.left-10,y+45);ctx.fillText('Reads',this.left-10,y+87);ctx.textAlign='left';
-      ctx.strokeStyle='#dfe5dc';ctx.beginPath();ctx.moveTo(this.left,scoreBottom);ctx.lineTo(this.width-this.right,scoreBottom);ctx.moveTo(this.left,readBottom);ctx.lineTo(this.width-this.right,readBottom);ctx.stroke();
+      ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(this.left,scoreBottom);ctx.lineTo(this.width-this.right,scoreBottom);ctx.moveTo(this.left,readBottom);ctx.lineTo(this.width-this.right,readBottom);ctx.stroke();
       ctx.save();ctx.beginPath();ctx.rect(this.left,y,this.plotWidth,this.rowHeight);ctx.clip();
       ctx.setLineDash([3,3]);ctx.strokeStyle='#b87538';ctx.beginPath();ctx.moveTo(this.left,scoreBottom-this.threshold*(scoreBottom-scoreTop));ctx.lineTo(this.width-this.right,scoreBottom-this.threshold*(scoreBottom-scoreTop));ctx.stroke();ctx.setLineDash([]);
       let visible=0;
@@ -1203,12 +1218,12 @@ class TranscriptTracks {
       }
       if(!visible)emptyRuns.push(y);
       ctx.restore();ctx.lineWidth=1;
-      ctx.strokeStyle='#a7b8ac';ctx.lineWidth=2;
+      ctx.strokeStyle='#94a3b8';ctx.lineWidth=2;
       ctx.beginPath();ctx.moveTo(0,y+this.rowHeight-3);ctx.lineTo(this.width,y+this.rowHeight-3);ctx.stroke();
       ctx.lineWidth=1;
     });
     if(this.position!==null&&this.position>=this.window[0]&&this.position<=this.window[1]){
-      ctx.strokeStyle='#20372f';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x(this.position),this.top);ctx.lineTo(x(this.position),height-20);ctx.stroke();
+      ctx.strokeStyle='#17365d';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x(this.position),this.top);ctx.lineTo(x(this.position),height-20);ctx.stroke();
     }
     // Empty-state text sits in the run heading, clear of both plot baselines.
     // Draw it last on an opaque backing so selection/grid lines cannot cross it.
@@ -1217,18 +1232,18 @@ class TranscriptTracks {
       const lines=this.plotWidth<190?['No qualifying sites','in this window']:['No qualifying sites in this window'];
       const textWidth=Math.max(...lines.map(line=>ctx.measureText(line).width));
       ctx.fillStyle='#fff';ctx.fillRect(this.left+4,y+1,textWidth+10,lines.length*11+5);
-      ctx.fillStyle='#66746e';lines.forEach((line,i)=>ctx.fillText(line,this.left+8,y+12+i*11));
+      ctx.fillStyle='#64748b';lines.forEach((line,i)=>ctx.fillText(line,this.left+8,y+12+i*11));
     }
-    ctx.font='10px system-ui';ctx.fillStyle='#66746e';ctx.textAlign='center';ctx.fillText('Transcript position',this.left+this.plotWidth/2,height-3);
+    ctx.font='10px system-ui';ctx.fillStyle='#64748b';ctx.textAlign='center';ctx.fillText('Transcript position',this.left+this.plotWidth/2,height-3);
   }
 
   drawOverview() {
     const axisHeight=22;
     const overview=this.context(this.overview,this.width,axisHeight+58);
-    overview.fillStyle='#f5f7f1';overview.fillRect(this.left,axisHeight,this.plotWidth,58);
+    overview.fillStyle='#f1f5f9';overview.fillRect(this.left,axisHeight,this.plotWidth,58);
     const fullX=p=>this.left+(p-this.domain[0])/(this.domain[1]-this.domain[0])*this.plotWidth;
     // Coordinate ticks describe the full observed span, independent of track zoom.
-    overview.font='10px system-ui';overview.fillStyle='#66746e';
+    overview.font='10px system-ui';overview.fillStyle='#64748b';
     const labelWidth=Math.max(overview.measureText(fmt(this.domain[0])).width,overview.measureText(fmt(this.domain[1])).width);
     const intervals=Math.max(1,Math.min(5,Math.floor(this.plotWidth/(labelWidth+24))));
     const seen=new Set();
@@ -1238,20 +1253,20 @@ class TranscriptTracks {
       const px=fullX(position);
       overview.textAlign=position===this.domain[0]?'left':position===this.domain[1]?'right':'center';
       overview.fillText(fmt(position),px,13);
-      overview.strokeStyle='#bbc8ba';overview.beginPath();overview.moveTo(px,17);overview.lineTo(px,axisHeight);overview.stroke();
+      overview.strokeStyle='#cbd5e1';overview.beginPath();overview.moveTo(px,17);overview.lineTo(px,axisHeight);overview.stroke();
     }
     overview.textAlign='left';
     // Per-pixel maxima retain high-score sites in a dense full-span overview.
     const peaks=new Map();
     for(const row of this.rows){const pixel=Math.round(fullX(row[1]));peaks.set(pixel,Math.max(peaks.get(pixel)||0,row[4]));}
-    overview.strokeStyle='#95b29d';
+    overview.strokeStyle='#94a3b8';
     for(const [pixel,score]of peaks){overview.beginPath();overview.moveTo(pixel,axisHeight+48);overview.lineTo(pixel,axisHeight+48-score*34);overview.stroke();}
     if($('transcript-run-tracks').open){
-      overview.fillStyle='#17634e18';overview.fillRect(fullX(this.window[0]),axisHeight+4,Math.max(2,fullX(this.window[1])-fullX(this.window[0])),48);
-      overview.strokeStyle='#17634e';overview.strokeRect(fullX(this.window[0]),axisHeight+4,Math.max(2,fullX(this.window[1])-fullX(this.window[0])),48);
+      overview.fillStyle='#2563eb18';overview.fillRect(fullX(this.window[0]),axisHeight+4,Math.max(2,fullX(this.window[1])-fullX(this.window[0])),48);
+      overview.strokeStyle='#2563eb';overview.strokeRect(fullX(this.window[0]),axisHeight+4,Math.max(2,fullX(this.window[1])-fullX(this.window[0])),48);
     }
-    overview.font='10px system-ui';overview.fillStyle='#66746e';overview.fillText('Observed span',1,axisHeight+22);
-    if(this.position!==null){overview.strokeStyle='#20372f';overview.beginPath();overview.moveTo(fullX(this.position),axisHeight+4);overview.lineTo(fullX(this.position),axisHeight+52);overview.stroke();}
+    overview.font='10px system-ui';overview.fillStyle='#64748b';overview.fillText('Observed span',1,axisHeight+22);
+    if(this.position!==null){overview.strokeStyle='#17365d';overview.beginPath();overview.moveTo(fullX(this.position),axisHeight+4);overview.lineTo(fullX(this.position),axisHeight+52);overview.stroke();}
     $('track-threshold-value').textContent=this.threshold.toFixed(4);
     $('track-threshold-value').title=`Saved H04 threshold: ${this.threshold}`;
     $('track-empty').hidden=!!this.rows.length;
