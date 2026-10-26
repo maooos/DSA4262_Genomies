@@ -1,16 +1,16 @@
 :root {
-  --ink: #20372f;
-  --muted: #66746e;
-  --green: #17634e;
-  --dark: #143d33;
-  --lime: #d9edbc;
-  --bg: #f5f6f2;
-  --line: #e1e6df;
+  --ink: #203047;
+  --muted: #64748b;
+  --green: #2563eb;
+  --dark: #17365d;
+  --lime: #dbeafe;
+  --bg: #f5f8fc;
+  --line: #dce5ef;
   --orange: #b87538;
   --blue: #466fa1;
   --radius: 14px;
   font-family:
-    Inter,
+    Inter,s
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
