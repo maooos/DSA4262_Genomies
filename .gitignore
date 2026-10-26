@@ -1,5 +1,7 @@
 # Full datasets
 /data
+/outputs
+/task2_site
 
 # Python and notebooks
 .venv/
